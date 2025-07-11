@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -13,6 +12,21 @@ namespace Shapeshifter
 {
     public partial class ShapeShifter : Form
     {
+        // Cancellation token source for stopping the algorithm
+        private CancellationTokenSource solveCancellationTokenSource = null;
+
+        public ShapeShifter()
+        {
+            InitializeComponent();
+        }
+
+        // Stub event handlers (remove if you have your own)
+        private void textBox1_TextChanged(object sender, EventArgs e) { }
+        private void label1_Click(object sender, EventArgs e) { }
+        private void label1_Click_1(object sender, EventArgs e) { }
+        private void label1_Click_2(object sender, EventArgs e) { }
+        private void Form1_Load(object sender, EventArgs e) { }
+
         private string ParseGridLayout(string html)
         {
             var regex = new Regex(@"mouseon\((\d+),(\d+)\)""[^>]*>\s*<img[^>]+/([^/_]+)_\d+\.gif", RegexOptions.IgnoreCase);
@@ -111,58 +125,71 @@ namespace Shapeshifter
             return tokenList;
         }
 
-        private void Form1_Load(object sender, EventArgs e) { }
-
-        private void textBox1_TextChanged(object sender, EventArgs e) { }
-
-        private void label1_Click(object sender, EventArgs e) { }
-
-        private void label1_Click_1(object sender, EventArgs e) { }
-
-        private void label1_Click_2(object sender, EventArgs e) { }
-
-        public ShapeShifter()
-        {
-            InitializeComponent();
-        }
-
         private async void startStopButton_Click(object sender, EventArgs e)
         {
-            waitingLabel.Visible = true;      // Show waiting message
-            startStopButton.Enabled = false; // Disable button
+            if (solveCancellationTokenSource != null)
+            {
+                // Stop pressed: cancel the running task
+                solveCancellationTokenSource.Cancel();
+                startStopButton.Enabled = false; // Prevent spam clicks
+                return;
+            }
 
-            // We'll capture inputTextBox.Text outside Task.Run for thread safety
+            // Start pressed: begin solving
+            solveCancellationTokenSource = new CancellationTokenSource();
+
+            waitingLabel.Visible = true;
+            startStopButton.Text = "Stop";
+            inputTextBox.Enabled = false;
+
             string htmlContent = inputTextBox.Text;
 
             bool solved = false;
             List<(int X, int Y)> placements = null;
             List<ShapeToken> tokenObjects = null;
 
-            await Task.Run(() =>
+            try
             {
-                string gridPattern = ParseGridLayout(htmlContent);
-                var tokenPatterns = ExtractTokenLayouts(htmlContent);
-                tokenObjects = tokenPatterns.Select(p => new ShapeToken(p)).ToList();
-
-                var puzzle = new TileGrid(gridPattern);
-                var planner = new ShapeShifterSolver(puzzle, tokenObjects);
-                solved = planner.AttemptSolve();
-
-                if (solved)
+                await Task.Run(() =>
                 {
-                    var placementDict = planner.GetPlacements();
-                    placements = new List<(int X, int Y)>(tokenObjects.Count);
-                    for (int i = 0; i < tokenObjects.Count; i++)
-                    {
-                        if (placementDict.TryGetValue(i, out var pos))
-                            placements.Add(pos);
-                        else
-                            placements.Add((-1, -1));
-                    }
-                }
-            });
+                    string gridPattern = ParseGridLayout(htmlContent);
+                    var tokenPatterns = ExtractTokenLayouts(htmlContent);
+                    tokenObjects = tokenPatterns.Select(p => new ShapeToken(p)).ToList();
 
-            // Now update UI on the main thread:
+                    var puzzle = new TileGrid(gridPattern);
+                    var planner = new ShapeShifterSolver(puzzle, tokenObjects, solveCancellationTokenSource.Token);
+                    solved = planner.AttemptSolve();
+
+                    if (solved)
+                    {
+                        var placementDict = planner.GetPlacements();
+                        placements = new List<(int X, int Y)>(tokenObjects.Count);
+                        for (int i = 0; i < tokenObjects.Count; i++)
+                        {
+                            if (placementDict.TryGetValue(i, out var pos))
+                                placements.Add(pos);
+                            else
+                                placements.Add((-1, -1));
+                        }
+                    }
+                }, solveCancellationTokenSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                solved = false;
+                placements = null;
+            }
+            finally
+            {
+                solveCancellationTokenSource.Dispose();
+                solveCancellationTokenSource = null;
+
+                waitingLabel.Visible = false;
+                startStopButton.Text = "Start";
+                startStopButton.Enabled = true;
+                inputTextBox.Enabled = true;
+            }
+
             stepsPanel.Controls.Clear();
 
             if (solved)
@@ -190,6 +217,18 @@ namespace Shapeshifter
                     stepsPanel.Controls.Add(wrapper);
                 }
             }
+            else if (placements == null)
+            {
+                var label = new Label
+                {
+                    Text = "Operation cancelled.",
+                    AutoSize = true,
+                    ForeColor = Color.DarkOrange,
+                    Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                    Padding = new Padding(10)
+                };
+                stepsPanel.Controls.Add(label);
+            }
             else
             {
                 var label = new Label
@@ -204,9 +243,6 @@ namespace Shapeshifter
             }
 
             HighlightNextStep();
-
-            waitingLabel.Visible = false;     // Hide waiting message
-            startStopButton.Enabled = true;  // Re-enable button
         }
 
         private void HighlightNextStep()
@@ -290,15 +326,19 @@ namespace Shapeshifter
         private TileGrid canvas;
         private List<ShapeToken> tokens;
         private readonly Dictionary<int, (int X, int Y)> placements = new Dictionary<int, (int X, int Y)>();
+        private readonly CancellationToken cancellationToken;
 
-        public ShapeShifterSolver(TileGrid canvas, List<ShapeToken> tokens)
+        public ShapeShifterSolver(TileGrid canvas, List<ShapeToken> tokens, CancellationToken cancellationToken = default)
         {
             this.canvas = canvas;
             this.tokens = tokens;
+            this.cancellationToken = cancellationToken;
         }
 
         public bool AttemptSolve(int idx = 0)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (idx == tokens.Count)
                 return canvas.AllClear();
 
@@ -307,6 +347,8 @@ namespace Shapeshifter
             {
                 for (int row = 0; row <= canvas.Rows - token.Height; row++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     canvas.Mark(token, col, row, 1);
 
                     if (AttemptSolve(idx + 1))

@@ -1,0 +1,92 @@
+# Shapeshifter Helper IDA*
+
+This C# application helps you solve the Neopets Shapeshifter puzzle by utilizing an **Iterative Deepening A*** (IDA\*) search algorithm to find the optimal sequence of token puzzle piece placements.
+
+## Puzzle Data
+* **Grid Layout:** The main puzzle grid (MxN board).
+* **Token Layouts:** Some k number of puzzle pieces.
+
+## Where to Find the Executable
+
+The compiled `.exe` can be found under the **[Releases](https://github.com/willnjohnson/ShapeshifterHelper_IDA-Star/releases)** section of this GitHub repository.
+
+## Features
+
+* **HTML Parsing:** Automatically extracts the puzzle grid and token shapes from the provided Neopets HTML source.
+* **Efficient Solving (IDA\*):** Employs the Iterative Deepening A\* search algorithm for efficient and optimal (shortest path) solutions.
+* **BitGrid Representation:** Utilizes a highly optimized bitmask representation for the puzzle grid, enabling extremely fast state manipulation and comparison.
+* **Progress Tracking:** Provides real-time updates on the number of expanded search nodes.
+* **Cancellation Support:** Allows you to stop the solving process at any time.
+
+## Requirements
+
+* **Operating System:** Windows (for the `.exe` release).
+* **.NET Framework:** The application is built using .NET (likely .NET Framework 4.7.2 or later, or .NET 6/7/8). Ensure you have the appropriate runtime installed if running from source or if the executable doesn't run directly.
+
+## Usage
+
+1.  **Download the latest `.exe`**.
+2.  **Run the `Shapeshifter_Helper.exe` application.**
+3.  **Paste the relevant HTML source** of the Neopets Shapeshifter puzzle into the input text box.
+4.  **Click the "Start" button** to begin the solving process.
+5.  **Click "Stop"** to cancel an ongoing search (recommended if progress is slowing down).
+
+`Tip: If you cannot find a solution, lose the game on purpose to generate a new puzzle, and try again.`
+
+## Output
+
+Once a solution is found (or the search is cancelled/exhausted), the results will be displayed in the application's "Steps" panel. Each step will indicate the original token number (e.g., "Step 01:") and its recommended placement coordinates (e.g., "Row 3, Column 2"). You can check off steps as you complete them in the game.
+
+## Algorithm
+
+Solving the Shapeshifter puzzle involves finding a sequence of token placements that transform an initial grid into a completely solved grid (i.e. grid with all swords). This is a classic search problem, and various algorithms can be employed, each with different performance characteristics. Let's consider a few:
+
+Let the grid dimensions be $M \times N$.
+Let $K$ be the number of tokens.
+Let $P$ be the maximum number of possible placement positions for a single token on the grid (approximately $M \times N$ for small tokens, potentially less for larger ones that don't fit in all orientations).
+Let $D$ be the depth of the solution (number of tokens placed in the optimal path, $D \le K$).
+
+### Recursive Bruteforce (Depth-First Search)
+
+A simple recursive bruteforce approach would try to place each token in every possible valid position, then recursively call itself with the remaining tokens and the updated grid.
+
+* **Time Complexity:** $O(P^K \cdot K \cdot MN)$. In the worst case, for each of $K$ tokens, you might try $P$ positions. At each step, placing a token and checking validity might involve iterating over its points and updating $MN$ grid cells. This quickly becomes astronomically large, making it impractical for puzzles with many tokens.
+* **Space Complexity:** $O(K \cdot MN)$. The space is primarily for the recursion stack, which goes as deep as $K$ (the number of tokens). Each stack frame stores a copy of the grid state (which takes $O(MN)$ space) and remaining tokens.
+
+### A\* Search
+
+A\* search is an informed search algorithm that uses a heuristic function to guide its search. It maintains an "open list" (priority queue) of states to explore and a "closed list" (hash set) of already explored states to avoid redundant computations and cycles. It guarantees finding the optimal solution (shortest path) if the heuristic is admissible and consistent.
+
+* **Heuristic:** For Shapeshifter, a simple admissible heuristic is the number of filled cells in the grid. Each token placement either reduces the number of filled cells or changes their configuration. The goal state has 0 filled cells. This heuristic is admissible because placing one token can reduce the filled cells by at most the token's area, but it costs 1 "step". It's consistent as well.
+* **Time Complexity:** In general graphs, $O(E \log V)$ or $O(E)$ with Fibonacci heaps, where $V$ is the number of vertices (states) and $E$ is the number of edges (transitions between states). For puzzle problems, it's often described as exponential in the branching factor and solution depth, but significantly reduced by a good heuristic. $O(P^D)$ in the worst case, but the heuristic helps prune large parts of the search tree. The actual complexity depends heavily on the problem's branching factor and the quality of the heuristic.
+* **Space Complexity:** $O(V_{visited} \cdot MN)$, where $V_{visited}$ is the number of unique states visited and stored in memory. A\* stores all visited states in the `explored` (closed) set and `frontier` (open) list. For complex puzzles, this can lead to massive memory consumption, as the number of reachable states can be very large.
+
+### Iterative Deepening A\* (IDA\*)
+
+IDA\* combines the best features of A\* and iterative deepening depth-first search. It performs a series of depth-limited DFS searches, gradually increasing the cost limit (bound) in each iteration. The bound for the next iteration is the minimum f-score ($g + h$) of any node that exceeded the current bound.
+
+* **Advantages over A\*:**
+    * **Optimal:** Like A\*, it guarantees finding the optimal solution if the heuristic is admissible.
+    * **Memory Efficient:** It only stores the current path, making its space complexity comparable to DFS. This is its primary advantage over A\* for large state spaces.
+* **Disadvantages:**
+    * **Repeated Work:** It re-expands nodes in successive iterations, but this overhead is often minor for exponential search trees, as the vast majority of work is done at the deepest level.
+* **Time Complexity:** Often asymptotically equivalent to A\* ($O(P^D)$ in worst-case heuristic scenarios, but better with a good heuristic). Despite re-expanding nodes, the number of nodes at the shallow depths is small compared to the deeper levels, so the total work is usually only a constant factor higher than A\*.
+* **Space Complexity:** $O(D \cdot MN)$ or $O(K \cdot MN)$. The space is dominated by the recursion stack, similar to depth-first search, making it much more memory-efficient than A\* for problems with large state spaces.
+
+This application uses **IDA\*** because the Shapeshifter puzzle's state space can be quite large, making memory a critical concern.
+
+---
+
+## Further Reading
+
+* **ShapeShifter algorithm (recursive bruteforce):** [Dr. Plank's lab writeup explanation of ShapeShifter](https://web.archive.org/web/20240418234629/https://web.eecs.utk.edu/~jplank/plank/classes/cs202/Labs/Lab9/)
+* **A\* Heuristic search:** [https://www.cs.cmu.edu/~cga/ai-course/astar.pdf](https://www.cs.cmu.edu/~cga/ai-course/astar.pdf)
+* **Iterative deepening A\*:** [https://en.wikipedia.org/wiki/Iterative_deepening_A*](https://en.wikipedia.org/wiki/Iterative_deepening_A*)
+
+---
+
+## License
+
+This project is open-source and available under the MIT License.
+
+**Disclaimer:** "Neopets" and "Shapeshifter" are registered trademarks of Neopets, Inc. This application is an unofficial fan-made helper and is not affiliated with or endorsed by Neopets, Inc.

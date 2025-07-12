@@ -57,6 +57,7 @@
             this.textBoxInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textBoxInput.ForeColor = System.Drawing.Color.White;
             this.textBoxInput.Location = new System.Drawing.Point(16, 81);
+            this.textBoxInput.MaxLength = 200000;
             this.textBoxInput.Multiline = true;
             this.textBoxInput.Name = "textBoxInput";
             this.textBoxInput.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;

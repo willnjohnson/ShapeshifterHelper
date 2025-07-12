@@ -8,12 +8,6 @@ using System.Threading; // For CancellationTokenSource
 using System.Threading.Tasks; // For Task.Run
 using System.Windows.Forms; // For Windows Forms UI components
 
-// Remove this line if targeting .NET Framework < 4.7.2 or .NET Core < 3.0
-// If you remove it, the manual CountSetBits implementation will be used.
-// If you are on .NET 5+ or .NET Core 3.0+, you could re-add it and use BitOperations.PopCount
-// However, the provided manual CountSetBits is already efficient.
-// using System.Numerics; // Commented out to ensure manual CountSetBits is used
-
 namespace Shapeshifter
 {
     public partial class ShapeShifter : Form
@@ -22,7 +16,6 @@ namespace Shapeshifter
 
         public ShapeShifter() => InitializeComponent();
 
-        // Placeholder event handlers (can be removed if not used by designer)
         private void textBox1_TextChanged(object sender, EventArgs e) { }
         private void label1_Click(object sender, EventArgs e) { }
         private void label1_Click_1(object sender, EventArgs e) { }
@@ -180,7 +173,6 @@ namespace Shapeshifter
                     // Initialize and run the solver
                     var solver = new Solver(initialGrid, tokens, cancelSource.Token, count =>
                     {
-                        // Update UI on the main thread
                         this.Invoke((MethodInvoker)delegate
                         {
                             labelWaiting.Text = $"Calculating... [{count:N0} expanded nodes]";
@@ -740,8 +732,9 @@ namespace Shapeshifter
         private readonly CancellationToken cancelToken; // For cancellation requests
         private readonly Action<ulong> progressCallback; // Callback for UI updates
         private ulong expandedNodes = 0; // Counter for expanded nodes
+        private const int MAX_DEPTH = 20; // Limit search depth
 
-        public Solver(BitGrid initialGrid, IReadOnlyList<Token> tokens, // Changed Grid to BitGrid
+        public Solver(BitGrid initialGrid, IReadOnlyList<Token> tokens,
             CancellationToken cancelToken = default, Action<ulong> progressCallback = null)
         {
             this.initialGrid = initialGrid;

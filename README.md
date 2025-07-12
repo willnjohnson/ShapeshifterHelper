@@ -94,4 +94,4 @@ This application uses **IDA\*** because the Shapeshifter puzzle's state space ca
 
 This project is open-source and available under the MIT License.
 
-**Disclaimer:** "Neopets" and "Shapeshifter" are registered trademarks of Neopets, Inc. This application is an unofficial fan-made helper and is not affiliated with or endorsed by Neopets, Inc.
+**Disclaimer:** "Neopets" is a registered trademark of Neopets, Inc. This application is an unofficial fan-made helper and is not affiliated with or endorsed by Neopets, Inc.

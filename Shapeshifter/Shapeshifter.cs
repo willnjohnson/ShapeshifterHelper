@@ -20,9 +20,10 @@ namespace Shapeshifter
         private void label1_Click(object sender, EventArgs e) { }
         private void label1_Click_1(object sender, EventArgs e) { }
         private void label1_Click_2(object sender, EventArgs e) { }
-        private void Form1_Load(object sender, EventArgs e) { 
+        private void Form1_Load(object sender, EventArgs e)
+        {
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false; 
+            this.MaximizeBox = false;
         }
 
         /// <summary>
@@ -135,7 +136,7 @@ namespace Shapeshifter
 
         /// <summary>
         /// Handles start/stop button clicks for puzzle solving.
-        /// Initiates the A* search or cancels it if already running.
+        /// Initiates the IDA* search or cancels it if already running.
         /// </summary>
         private async void startStopButton_Click(object sender, EventArgs e)
         {
@@ -179,7 +180,7 @@ namespace Shapeshifter
                         });
                     });
 
-                    placements = solver.SolveAStar(); // Attempt to solve
+                    placements = solver.SolveIDAStar(); // Use IDA* to solve
                     solved = placements != null;
                 }, cancelSource.Token); // Pass cancellation token to Task.Run
             }
@@ -258,8 +259,6 @@ namespace Shapeshifter
                         WrapContents = false, // Keep all contents on a single line
                         Padding = new Padding(0), // No internal padding for the flow panel
                         Margin = new Padding(5, 5, 5, 5), // External margin for spacing between step entries
-                                                          // Optional: set a recognizable border style for debugging, then remove
-                                                          // BorderStyle = BorderStyle.FixedSingle 
                     };
 
                     // 1. CheckBox for "Step 01:"
@@ -284,7 +283,6 @@ namespace Shapeshifter
                         Font = new Font("Segoe UI", 9), // Use a standard font like CheckBox
                         Padding = new Padding(0),
                         Margin = new Padding(15, 3, 0, 0) // Left margin for "tab" spacing (15px from checkbox)
-                                                          // Top margin (3px) to align with checkbox
                     };
                     flowPanel.Controls.Add(rowLabel);
 
@@ -297,7 +295,6 @@ namespace Shapeshifter
                         Font = new Font("Segoe UI", 9), // Use a standard font like CheckBox
                         Padding = new Padding(0),
                         Margin = new Padding(5, 3, 0, 0) // Left margin for spacing (5px from rowLabel)
-                                                         // Top margin (3px) to align
                     };
                     flowPanel.Controls.Add(colLabel);
 
@@ -348,7 +345,6 @@ namespace Shapeshifter
                     Label colLabel = null;
 
                     // Find the CheckBox and Labels within the FlowLayoutPanel
-                    // Assumes their order based on how you add them in DisplayResults
                     if (flowPanel.Controls.Count > 0 && flowPanel.Controls[0] is CheckBox)
                     {
                         cb = (CheckBox)flowPanel.Controls[0];
@@ -400,7 +396,6 @@ namespace Shapeshifter
 
         private void label2_Click(object sender, EventArgs e)
         {
-
         }
     }
 
@@ -439,7 +434,6 @@ namespace Shapeshifter
                 {
                     if (rowData[r][c] == '1')
                     {
-                        // Set the c-th bit (0-indexed from right to left, or left to right depending on convention)
                         rowValue |= (1UL << c);
                     }
                 }
@@ -494,7 +488,7 @@ namespace Shapeshifter
 
         /// <summary>
         /// Counts the number of non-zero tiles in the grid using a manual PopCount implementation.
-        /// Used as a heuristic in A* search (lower count means closer to goal).
+        /// Used as a heuristic in IDA* search (lower count means closer to goal).
         /// </summary>
         /// <returns>The number of filled (non-zero) tiles.</returns>
         public int CountFilledTiles() => _rows.Sum(CountSetBits); // Changed to use local CountSetBits
@@ -505,7 +499,6 @@ namespace Shapeshifter
         /// </summary>
         private static int CountSetBits(ulong n)
         {
-            // Efficient software-based PopCount implementation (Hamming weight)
             n = n - ((n >> 1) & 0x5555555555555555UL);
             n = (n & 0x3333333333333333UL) + ((n >> 2) & 0x3333333333333333UL);
             n = (n + (n >> 4)) & 0x0F0F0F0F0F0F0F0FUL;
@@ -520,9 +513,7 @@ namespace Shapeshifter
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            // Quick check on properties before comparing the array content
             if (Rows != other.Rows || Cols != other.Cols) return false;
-            // Use SequenceEqual for efficient array content comparison
             return _rows.SequenceEqual(other._rows);
         }
 
@@ -534,13 +525,11 @@ namespace Shapeshifter
         /// </summary>
         public override int GetHashCode()
         {
-            unchecked // Allows integer overflows to be unchecked
+            unchecked
             {
-                int hash = 17; // Start with a prime number
+                int hash = 17;
                 hash = hash * 23 + Rows.GetHashCode();
                 hash = hash * 23 + Cols.GetHashCode();
-
-                // Incorporate the hash of the ulong row contents.
                 foreach (var val in _rows)
                     hash = hash * 23 + val.GetHashCode();
                 return hash;
@@ -558,10 +547,9 @@ namespace Shapeshifter
             {
                 for (int c = 0; c < Cols; c++)
                 {
-                    // Check if the c-th bit is set
                     sb.Append((_rows[r] & (1UL << c)) != 0 ? '1' : '0');
                 }
-                if (r < Rows - 1) sb.Append(','); // Add comma between rows
+                if (r < Rows - 1) sb.Append(',');
             }
             return sb.ToString();
         }
@@ -627,13 +615,13 @@ namespace Shapeshifter
     }
 
     /// <summary>
-    /// Represents a state in the A* search.
+    /// Represents a state in the IDA* search.
     /// Now directly stores the current Grid state.
     /// </summary>
-    public class GameState : IEquatable<GameState> // Implements IEquatable directly
+    public class GameState : IEquatable<GameState>
     {
         public IReadOnlyList<Token> RemainingTokens { get; } // Tokens yet to be placed
-        public BitGrid CurrentGrid { get; } // The actual grid state at this point (now BitGrid)
+        public BitGrid CurrentGrid { get; } // The actual grid state at this point
         public GameState ParentState { get; } // Reference to the state from which this one was derived
         public Token PlacedToken { get; } // The token placed to reach this state
         public (int X, int Y) PlacementCoords { get; } // The coordinates where PlacedToken was placed
@@ -643,10 +631,10 @@ namespace Shapeshifter
         /// </summary>
         /// <param name="remainingTokens">All tokens available at the start.</param>
         /// <param name="initialGrid">The grid at the very beginning of the puzzle.</param>
-        public GameState(IReadOnlyList<Token> remainingTokens, BitGrid initialGrid) // Changed Grid to BitGrid
+        public GameState(IReadOnlyList<Token> remainingTokens, BitGrid initialGrid)
         {
             RemainingTokens = remainingTokens;
-            CurrentGrid = initialGrid; // The initial grid is the current grid
+            CurrentGrid = initialGrid;
             ParentState = null;
             PlacedToken = null;
             PlacementCoords = (-1, -1); // Sentinel value
@@ -660,10 +648,10 @@ namespace Shapeshifter
         /// <param name="parent">The GameState from which this state was reached.</param>
         /// <param name="placedToken">The token that was placed to create this state.</param>
         /// <param name="placementCoords">The (X, Y) coordinates of the `placedToken`.</param>
-        public GameState(IReadOnlyList<Token> remainingTokens, BitGrid currentGrid, GameState parent, Token placedToken, (int X, int Y) placementCoords) // Changed Grid to BitGrid
+        public GameState(IReadOnlyList<Token> remainingTokens, BitGrid currentGrid, GameState parent, Token placedToken, (int X, int Y) placementCoords)
         {
             RemainingTokens = remainingTokens;
-            CurrentGrid = currentGrid; // The grid *after* placing the token
+            CurrentGrid = currentGrid;
             ParentState = parent;
             PlacedToken = placedToken;
             PlacementCoords = placementCoords;
@@ -678,7 +666,6 @@ namespace Shapeshifter
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
 
-            // 1. Compare RemainingTokens: Check if the sequence of original indices is the same.
             if (RemainingTokens.Count != other.RemainingTokens.Count)
                 return false;
 
@@ -690,7 +677,6 @@ namespace Shapeshifter
                 }
             }
 
-            // 2. Compare the actual grid state.
             return CurrentGrid.Equals(other.CurrentGrid);
         }
 
@@ -702,37 +688,32 @@ namespace Shapeshifter
         /// </summary>
         public override int GetHashCode()
         {
-            if (CurrentGrid == null) return 0; // Handle null grid for consistency
+            if (CurrentGrid == null) return 0;
 
             unchecked
             {
                 int hash = 17;
-
-                // Hash the sequence of remaining token original indices.
                 foreach (var token in RemainingTokens)
                 {
                     hash = hash * 23 + token.OriginalIndex.GetHashCode();
                 }
-
-                // Hash the current grid state directly.
                 hash = hash * 23 + CurrentGrid.GetHashCode();
-
                 return hash;
             }
         }
     }
 
     /// <summary>
-    /// Implements the A* search algorithm to solve the Shapeshifter puzzle.
+    /// Implements the IDA* search algorithm to solve the Shapeshifter puzzle.
     /// </summary>
     public class Solver
     {
-        private readonly BitGrid initialGrid; // Changed Grid to BitGrid
-        private readonly IReadOnlyList<Token> tokens; // All available tokens
-        private readonly CancellationToken cancelToken; // For cancellation requests
-        private readonly Action<ulong> progressCallback; // Callback for UI updates
-        private ulong expandedNodes = 0; // Counter for expanded nodes
-        private const int MAX_DEPTH = 20; // Limit search depth
+        private readonly BitGrid initialGrid;
+        private readonly IReadOnlyList<Token> tokens;
+        private readonly CancellationToken cancelToken;
+        private readonly Action<ulong> progressCallback;
+        private ulong expandedNodes = 0;
+        private const int MAX_DEPTH = 20;
 
         public Solver(BitGrid initialGrid, IReadOnlyList<Token> tokens,
             CancellationToken cancelToken = default, Action<ulong> progressCallback = null)
@@ -744,97 +725,98 @@ namespace Shapeshifter
         }
 
         /// <summary>
-        /// Solves the puzzle using the A* search algorithm.
+        /// Solves the puzzle using the IDA* search algorithm.
         /// </summary>
         /// <returns>A dictionary mapping original token indices to their placement (X, Y) coordinates
         /// if a solution is found; otherwise, returns null.</returns>
-        public Dictionary<int, (int X, int Y)> SolveAStar()
+        public Dictionary<int, (int X, int Y)> SolveIDAStar()
         {
             cancelToken.ThrowIfCancellationRequested();
 
-            // Create the initial state of the puzzle, passing the initial grid
             var startState = new GameState(tokens, initialGrid);
+            double initialThreshold = CalculateHeuristic(startState);
+            Dictionary<int, (int X, int Y)> solution = null;
 
-            // Priority queue for open nodes (states to be explored)
-            var frontier = new PriorityQueue<GameState>();
-
-            // Dictionaries for g-score (cost from start) and f-score (g-score + heuristic)
-            var gScore = new Dictionary<GameState, double> { [startState] = 0 };
-            var fScore = new Dictionary<GameState, double> { [startState] = CalculateHeuristic(startState) };
-
-            // HashSet for explored nodes (states already visited)
-            var explored = new HashSet<GameState>();
-
-            // Add the start state to the frontier
-            frontier.Push(startState, fScore[startState]);
-
-            // Main A* search loop
-            while (!frontier.IsEmpty())
+            // Iterative deepening loop
+            double threshold = initialThreshold;
+            while (solution == null && threshold < double.PositiveInfinity)
             {
-                cancelToken.ThrowIfCancellationRequested(); // Check for cancellation
+                var seenStates = new Dictionary<GameState, double>();
+                double newThreshold = double.PositiveInfinity;
+                solution = Search(startState, 0, threshold, seenStates, ref newThreshold);
+                threshold = newThreshold; // Update threshold for next iteration
+                seenStates.Clear(); // Clear seen states to reset for next iteration
+            }
 
-                var currentState = frontier.Pop(); // Get the state with the lowest f-score
+            return solution;
+        }
 
-                // Direct access to the current grid state from the GameState object itself
-                BitGrid currentGrid = currentState.CurrentGrid; // Changed Grid to BitGrid
+        /// <summary>
+        /// Recursive depth-first search with threshold for IDA*.
+        /// </summary>
+        /// <param name="state">Current game state.</param>
+        /// <param name="gScore">Cost from start to current state.</param>
+        /// <param name="threshold">Current f-score threshold.</param>
+        /// <param name="seenStates">Tracks visited states and their minimum g-scores.</param>
+        /// <param name="newThreshold">Tracks the minimum f-score exceeding the current threshold.</param>
+        /// <returns>Solution if found; otherwise, null.</returns>
+        private Dictionary<int, (int X, int Y)> Search(GameState state, double gScore, double threshold,
+            Dictionary<GameState, double> seenStates, ref double newThreshold)
+        {
+            cancelToken.ThrowIfCancellationRequested();
 
-                // Check if the goal state is reached: grid is cleared and no tokens remain
-                if (currentGrid.IsCleared() && currentState.RemainingTokens.Count == 0)
+            double fScore = gScore + CalculateHeuristic(state);
+            if (fScore > threshold)
+            {
+                newThreshold = Math.Min(newThreshold, fScore);
+                return null;
+            }
+
+            UpdateProgress();
+
+            // Check if goal state is reached
+            if (state.CurrentGrid.IsCleared() && state.RemainingTokens.Count == 0)
+            {
+                return ReconstructSolutionPath(state);
+            }
+
+            // Check for cycles or better paths
+            if (seenStates.TryGetValue(state, out double existingGScore) && gScore >= existingGScore)
+            {
+                return null;
+            }
+            seenStates[state] = gScore;
+
+            // If no tokens remain, this is a dead-end
+            if (state.RemainingTokens.Count == 0)
+            {
+                return null;
+            }
+
+            // Select the next token to place
+            var tokenToPlace = state.RemainingTokens[0];
+            var remainingTokens = state.RemainingTokens.Skip(1).ToList().AsReadOnly();
+
+            // Explore all possible placements
+            for (int row = 0; row <= state.CurrentGrid.Rows - tokenToPlace.Height; row++)
+            {
+                for (int col = 0; col <= state.CurrentGrid.Cols - tokenToPlace.Width; col++)
                 {
-                    // Goal reached, reconstruct and return the solution path
-                    return ReconstructSolutionPath(currentState);
-                }
+                    cancelToken.ThrowIfCancellationRequested();
 
-                // If this state has already been fully explored with an equal or better path, skip it.
-                if (explored.Contains(currentState)) continue;
-                explored.Add(currentState); // Mark current state as explored
+                    var nextGrid = state.CurrentGrid.PlaceToken(tokenToPlace, col, row, 1);
+                    var nextState = new GameState(remainingTokens, nextGrid, state, tokenToPlace, (col, row));
+                    double nextGScore = gScore + 1;
 
-                UpdateProgress(); // Update progress counter for UI
-
-                // If no tokens left and grid not cleared, this is a dead-end path
-                if (currentState.RemainingTokens.Count == 0) continue;
-
-                // Select the next token to place (typically the first one in the remaining list)
-                var tokenToPlace = currentState.RemainingTokens[0];
-                // Create a new list of remaining tokens for the next states
-                var remainingTokensForNextState = currentState.RemainingTokens.Skip(1).ToList().AsReadOnly();
-
-                // Iterate through all possible placement positions for the selected token
-                for (int row = 0; row <= currentGrid.Rows - tokenToPlace.Height; row++)
-                {
-                    for (int col = 0; col <= currentGrid.Cols - tokenToPlace.Width; col++)
+                    var result = Search(nextState, nextGScore, threshold, seenStates, ref newThreshold);
+                    if (result != null)
                     {
-                        cancelToken.ThrowIfCancellationRequested();
-
-                        // Create the next Grid state by applying the token placement to the current grid
-                        BitGrid nextGrid = currentGrid.PlaceToken(tokenToPlace, col, row, 1); // Changed Grid to BitGrid
-
-                        // Create the next GameState. Pass the newly computed nextGrid.
-                        var nextState = new GameState(remainingTokensForNextState, nextGrid, currentState, tokenToPlace, (col, row));
-
-                        double tentativeGScore = gScore[currentState] + 1; // Each move costs 1
-
-                        // If a path to nextState has been found before, and this new path is not better, skip.
-                        if (gScore.TryGetValue(nextState, out double existingGScore) && tentativeGScore >= existingGScore)
-                        {
-                            continue;
-                        }
-
-                        // If the nextState is already in 'explored' with a worse gScore, it needs to be 're-opened'
-                        // and re-added to the frontier.
-                        // This check must happen *before* updating gScore/fScore and pushing to frontier
-                        // to correctly implement the A* "re-opening" behavior.
-                        bool wasExplored = explored.Remove(nextState); // Try to remove from explored
-
-                        // This path to nextState is new or better.
-                        gScore[nextState] = tentativeGScore;
-                        fScore[nextState] = tentativeGScore + CalculateHeuristic(nextState); // Calculate f-score
-                        frontier.Push(nextState, fScore[nextState]); // Add nextState to the frontier
+                        return result;
                     }
                 }
             }
 
-            return null; // No solution found after exhausting the frontier
+            return null;
         }
 
         /// <summary>
@@ -849,14 +831,12 @@ namespace Shapeshifter
             var pathStack = new Stack<(int OriginalTokenIndex, int X, int Y)>();
             GameState current = finalState;
 
-            // Traverse back up the parent chain until the initial state (ParentState == null)
             while (current.ParentState != null)
             {
                 pathStack.Push((current.PlacedToken.OriginalIndex, current.PlacementCoords.X, current.PlacementCoords.Y));
                 current = current.ParentState;
             }
 
-            // Pop from the stack to get the placements in the correct chronological order
             while (pathStack.Count > 0)
             {
                 var (idx, x, y) = pathStack.Pop();
@@ -874,7 +854,6 @@ namespace Shapeshifter
         /// <returns>The heuristic value.</returns>
         private double CalculateHeuristic(GameState state)
         {
-            // Directly access the CurrentGrid property of the state.
             return state.CurrentGrid.CountFilledTiles();
         }
 
@@ -885,114 +864,8 @@ namespace Shapeshifter
         private void UpdateProgress()
         {
             expandedNodes++;
-            // Update UI only after a certain number of nodes have been searched through expansion
-            if (expandedNodes % 10000 == 0) // Adjust this number for desired UI update frequency
+            if (expandedNodes % 10000 == 0)
                 progressCallback?.Invoke(expandedNodes);
         }
-    }
-
-    /// <summary>
-    /// A generic min-priority queue implementation using a binary heap.
-    /// It stores items along with their priority and a tie-breaking count.
-    /// </summary>
-    /// <typeparam name="T">The type of items stored in the priority queue.</typeparam>
-    public class PriorityQueue<T>
-    {
-        // Internal heap representation: a list of tuples (Priority, InsertionOrderCount, Item)
-        private readonly List<(double Priority, int Count, T Item)> heap = new List<(double, int, T)>();
-        private int count = 0; // Used to maintain insertion order for tie-breaking
-
-        /// <summary>
-        /// Adds an item to the priority queue with a given priority.
-        /// </summary>
-        /// <param name="item">The item to add.</param>
-        /// <param name="priority">The priority of the item (lower value means higher priority).</param>
-        public void Push(T item, double priority)
-        {
-            heap.Add((priority, count++, item)); // Add to end
-            HeapifyUp(heap.Count - 1); // Restore heap property by moving up
-        }
-
-        /// <summary>
-        /// Removes and returns the item with the highest priority (lowest priority value).
-        /// </summary>
-        /// <returns>The highest priority item.</returns>
-        /// <exception cref="InvalidOperationException">Thrown if the queue is empty.</exception>
-        public T Pop()
-        {
-            if (IsEmpty()) throw new InvalidOperationException("Priority queue is empty.");
-
-            var item = heap[0].Item; // Get the root (highest priority item)
-            heap[0] = heap[heap.Count - 1]; // Move last item to root
-            heap.RemoveAt(heap.Count - 1); // Remove the last item (now duplicated at root)
-            HeapifyDown(0); // Restore heap property from the root
-            return item;
-        }
-
-        /// <summary>
-        /// Checks if the priority queue is empty.
-        /// </summary>
-        public bool IsEmpty() => heap.Count == 0;
-
-        /// <summary>
-        /// Restores the heap property by moving an item up the heap.
-        /// </summary>
-        /// <param name="index">The index of the item to move up.</param>
-        private void HeapifyUp(int index)
-        {
-            while (index > 0)
-            {
-                int parentIndex = (index - 1) / 2;
-                // If child has higher priority (smaller value) than parent, swap
-                if (CompareItems(heap[index], heap[parentIndex]) >= 0) break;
-                Swap(index, parentIndex);
-                index = parentIndex;
-            }
-        }
-
-        /// <summary>
-        /// Restores the heap property by moving an item down the heap.
-        /// </summary>
-        /// <param name="index">The index of the item to move down.</param>
-        private void HeapifyDown(int index)
-        {
-            while (true)
-            {
-                int leftChild = 2 * index + 1;
-                int rightChild = 2 * index + 2;
-                int smallest = index; // Assume current node is the smallest
-
-                // Check left child
-                if (leftChild < heap.Count && CompareItems(heap[leftChild], heap[smallest]) < 0)
-                    smallest = leftChild;
-
-                // Check right child
-                if (rightChild < heap.Count && CompareItems(heap[rightChild], heap[smallest]) < 0)
-                    smallest = rightChild;
-
-                // If the smallest is still the current node, heap property is restored
-                if (smallest == index) break;
-
-                // Otherwise, swap with the smallest child and continue heapifying down
-                Swap(index, smallest);
-                index = smallest;
-            }
-        }
-
-        /// <summary>
-        /// Compares two items based on their priority, then their insertion order (Count) for tie-breaking.
-        /// </summary>
-        private int CompareItems((double Priority, int Count, T Item) a, (double Priority, int Count, T Item) b)
-        {
-            int priorityComp = a.Priority.CompareTo(b.Priority);
-            // If priorities are equal, use the insertion order count to break ties.
-            // This ensures a stable sort and helps A* to explore states consistently.
-            return priorityComp != 0 ? priorityComp : a.Count.CompareTo(b.Count);
-        }
-
-        /// <summary>
-        /// Swaps two items in the heap list.
-        /// </summary>
-        private void Swap(int i, int j) => (heap[i], heap[j]) = (heap[j], heap[i]);
     }
 }

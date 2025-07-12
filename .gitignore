@@ -5,3 +5,5 @@
 *.dbmdl
 *.vspx
 *.vsidx
+Shapeshifter/bin/*
+Shapeshifter/obj/*

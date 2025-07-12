@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Linq; // For .Sum(), .All(), .SequenceEqual(), .Select(), .OrderBy()
 using System.Text; // For StringBuilder
 using System.Text.RegularExpressions; // For Regex parsing HTML
 using System.Threading; // For CancellationTokenSource
 using System.Threading.Tasks; // For Task.Run
 using System.Windows.Forms; // For Windows Forms UI components
+using WinFormsLabel = System.Windows.Forms.Label;
 
 namespace Shapeshifter
 {
@@ -16,7 +18,8 @@ namespace Shapeshifter
 
         public ShapeShifter() => InitializeComponent();
 
-        private void textBox1_TextChanged(object sender, EventArgs e) { }
+        private void textBox1_TextChanged(object sender, EventArgs e) {
+        }
         private void label1_Click(object sender, EventArgs e) { }
         private void label1_Click_1(object sender, EventArgs e) { }
         private void label1_Click_2(object sender, EventArgs e) { }
@@ -24,6 +27,15 @@ namespace Shapeshifter
         {
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
+
+            labelPaste.BackColor = Color.FromArgb(64, 0, 0, 0);
+            labelPaste.Padding = new Padding(3);
+
+            labelResult.BackColor = Color.FromArgb(64, 0, 0, 0);
+            labelResult.Padding = new Padding(3);
+
+            labelWaiting.BackColor = Color.FromArgb(64, 0, 0, 0);
+            labelWaiting.Padding = new Padding(2);
         }
 
         /// <summary>
@@ -150,6 +162,7 @@ namespace Shapeshifter
 
             // Start a new solving operation
             cancelSource = new CancellationTokenSource();
+            textBoxStepsPanel.Controls.Clear();
             SetUIState(true); // Set UI to "solving" mode
 
             string html = textBoxInput.Text;
@@ -218,7 +231,6 @@ namespace Shapeshifter
             labelWaiting.Text = solving ? "Calculating..." : "";
             btnStartStop.Text = solving ? "Stop" : "Start";
             btnStartStop.Enabled = true; // Always enable start/stop button after operation
-            textBoxInput.Enabled = !solving;
         }
 
         /// <summary>
@@ -230,8 +242,6 @@ namespace Shapeshifter
         /// <param name="tokens">List of original Token objects.</param>
         private void DisplayResults(bool solved, Dictionary<int, (int X, int Y)> placements, List<Token> tokens)
         {
-            textBoxStepsPanel.Controls.Clear(); // Clear previous results
-
             if (solved && placements != null)
             {
                 labelWaiting.Text = "Solved!";
@@ -259,6 +269,7 @@ namespace Shapeshifter
                         WrapContents = false, // Keep all contents on a single line
                         Padding = new Padding(0), // No internal padding for the flow panel
                         Margin = new Padding(5, 5, 5, 5), // External margin for spacing between step entries
+                        BackColor = Color.FromArgb(0, 0, 0, 0)
                     };
 
                     // 1. CheckBox for "Step 01:"
@@ -299,7 +310,7 @@ namespace Shapeshifter
                     flowPanel.Controls.Add(colLabel);
 
                     // Add the flowPanel (which contains the checkbox and labels)
-                    textBoxStepsPanel.Controls.Add(flowPanel); // IMPORTANT: Add the FlowLayoutPanel, not the CheckBox directly
+                    textBoxStepsPanel.Controls.Add(flowPanel);
                 }
             }
             else if (placements == null && cancelSource == null) // If placements is null AND not cancelled means no solution found
@@ -396,6 +407,11 @@ namespace Shapeshifter
 
         private void label2_Click(object sender, EventArgs e)
         {
+        }
+
+        private void labelTitle_Click(object sender, EventArgs e)
+        {
+
         }
     }
 
@@ -866,6 +882,67 @@ namespace Shapeshifter
             expandedNodes++;
             if (expandedNodes % 10000 == 0)
                 progressCallback?.Invoke(expandedNodes);
+        }
+    }
+
+    public class RoundedLabel : System.Windows.Forms.Label
+    {
+        public int CornerRadius { get; set; } = 10;
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            // Don't call base.OnPaintBackground to avoid flickering
+            // Instead, paint the rounded background yourself
+
+            using (GraphicsPath path = new GraphicsPath())
+            {
+                Rectangle bounds = this.ClientRectangle;
+                int r = CornerRadius;
+
+                path.AddArc(bounds.X, bounds.Y, r, r, 180, 90);
+                path.AddArc(bounds.Right - r, bounds.Y, r, r, 270, 90);
+                path.AddArc(bounds.Right - r, bounds.Bottom - r, r, r, 0, 90);
+                path.AddArc(bounds.X, bounds.Bottom - r, r, r, 90, 90);
+                path.CloseFigure();
+
+                this.Region = new Region(path);
+
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (SolidBrush brush = new SolidBrush(this.BackColor))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+            }
+
+            // Draw the text centered
+            TextRenderer.DrawText(
+                e.Graphics,
+                this.Text,
+                this.Font,
+                this.ClientRectangle,
+                this.ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        }
+    }
+    public class DoubleBufferedFlowLayoutPanel : FlowLayoutPanel
+    {
+        public DoubleBufferedFlowLayoutPanel()
+        {
+            this.DoubleBuffered = true;
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint |
+                          ControlStyles.UserPaint |
+                          ControlStyles.OptimizedDoubleBuffer, true);
+            this.UpdateStyles();
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
+                return cp;
+            }
         }
     }
 }

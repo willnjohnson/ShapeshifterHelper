@@ -2,6 +2,8 @@
 
 This C# application helps you solve the Neopets Shapeshifter puzzle by utilizing an **Iterative Deepening A*** (IDA\*) search algorithm to find the optimal sequence of token puzzle piece placements.
 
+**Important Note:** This program only considers grid of rank=2 (e.g. if board contains only gauntlet and sword) for bit representation. Later levels may show rank=3 (or possibly higher) (e.g. if board contains gauntlet, helmet, and sword), which is not implemented in this puzzle.
+
 ## Puzzle Data
 * **Grid Layout:** The main puzzle grid (MxN board).
 * **Token Layouts:** Some k number of puzzle pieces.

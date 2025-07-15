@@ -107,4 +107,4 @@ In essence, while IDA\* is a robust and generally effective algorithm, this C# p
 
 This project is open-source and available under the MIT License.
 
-**Disclaimer:** "Neopets" and "Shapeshifter" are registered trademarks of Neopets, Inc. This application is an unofficial fan-made helper and is not affiliated with or endorsed by Neopets, Inc.
+**Disclaimer:** "Neopets" is a registered trademarks of Neopets, Inc. This application is an unofficial fan-made helper and is not affiliated with or endorsed by Neopets, Inc.

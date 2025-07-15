@@ -523,26 +523,32 @@ namespace Shapeshifter
                 string stepNum = (i + 1).ToString("D2");
 
                 // Add regular checkbox for all steps except the last
-                var checkbox = new CheckBox
+                if (i != solutionSteps.Count - 1)
                 {
-                    Text = $"Step {stepNum}:",
-                    AutoSize = true,
-                    Margin = new Padding(0, 3, 0, 0),
-                    Font = new Font("Segoe UI", 9),
-                    Tag = i,
-                    Checked = false
-                };
-                checkbox.CheckedChanged += StepCheckbox_CheckedChanged;
-
-                if (i == solutionSteps.Count - 1)
-                {
-                    // Hide the box by shifting text right and overlapping box
-                    //checkbox.TextAlign = ContentAlignment.MiddleLeft;
-                    //checkbox.Padding = new Padding(4, 0, 0, 0); // simulate checkbox spacing
+                    var checkbox = new CheckBox
+                    {
+                        Text = $"Step {stepNum}:",
+                        AutoSize = true,
+                        Margin = new Padding(0, 3, 0, 0),
+                        Font = new Font("Segoe UI", 9),
+                        Tag = i,
+                        Checked = false
+                    };
+                    checkbox.CheckedChanged += StepCheckbox_CheckedChanged;
+                    flowPanel.Controls.Add(checkbox);
+                } else {
+                    var checkbox = new DoNothingCheckBox
+                    {
+                        Text = $"Step {stepNum}:",
+                        AutoSize = true,
+                        Margin = new Padding(0, 3, 0, 0),
+                        Font = new Font("Segoe UI", 9),
+                        Tag = i,
+                        Checked = false
+                    };
                     checkbox.Region = new Region(new Rectangle(18, 0, checkbox.PreferredSize.Width, checkbox.Height));
+                    flowPanel.Controls.Add(checkbox);
                 }
-
-                flowPanel.Controls.Add(checkbox);
 
                 // Add row and column labels
                 var rowLabel = new Label
@@ -992,21 +998,19 @@ namespace Shapeshifter
     }
 
     /// <summary>
-    /// Custom checkbox with just the text, no checkbox.
+    /// Custom checkbox that does nothing.
     /// </summary>
-    public class TextOnlyCheckBox : CheckBox
+    public class DoNothingCheckBox : CheckBox
     {
-        protected override void OnPaint(PaintEventArgs e)
+        public bool DisableClickChecking { get; set; } = false;
+
+        protected override void OnClick(EventArgs e)
         {
-            // Skip painting the checkbox itself
-            TextRenderer.DrawText(
-                e.Graphics,
-                this.Text,
-                this.Font,
-                this.ClientRectangle,
-                this.ForeColor,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter
-            );
+            if (!DisableClickChecking)
+            {
+                base.OnClick(e);
+            }
+            // Otherwise, do nothing
         }
     }
 

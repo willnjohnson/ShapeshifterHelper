@@ -31,11 +31,12 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ShapeShifter));
             this.textBoxInput = new System.Windows.Forms.RichTextBox();
             this.btnStartStop = new System.Windows.Forms.Button();
+            this.pboxTitle = new System.Windows.Forms.PictureBox();
+            this.tableSolution = new System.Windows.Forms.TableLayoutPanel();
             this.textBoxStepsPanel = new Shapeshifter.DoubleBufferedFlowLayoutPanel();
             this.labelWaiting = new Shapeshifter.RoundedLabel();
             this.labelResult = new Shapeshifter.RoundedLabel();
             this.labelPaste = new Shapeshifter.RoundedLabel();
-            this.pboxTitle = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.pboxTitle)).BeginInit();
             this.SuspendLayout();
             // 
@@ -52,7 +53,6 @@
             this.textBoxInput.Size = new System.Drawing.Size(856, 252);
             this.textBoxInput.TabIndex = 0;
             this.textBoxInput.Text = "";
-            this.textBoxInput.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
             // 
             // btnStartStop
             // 
@@ -68,6 +68,33 @@
             this.btnStartStop.UseVisualStyleBackColor = false;
             this.btnStartStop.Click += new System.EventHandler(this.startStopButton_Click);
             // 
+            // pboxTitle
+            // 
+            this.pboxTitle.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.pboxTitle.BackColor = System.Drawing.Color.Transparent;
+            this.pboxTitle.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("pboxTitle.BackgroundImage")));
+            this.pboxTitle.Location = new System.Drawing.Point(298, 11);
+            this.pboxTitle.Name = "pboxTitle";
+            this.pboxTitle.Size = new System.Drawing.Size(325, 59);
+            this.pboxTitle.TabIndex = 14;
+            this.pboxTitle.TabStop = false;
+            // 
+            // tableSolution
+            // 
+            this.tableSolution.Anchor = System.Windows.Forms.AnchorStyles.Right;
+            this.tableSolution.BackColor = System.Drawing.Color.Transparent;
+            this.tableSolution.ColumnCount = 2;
+            this.tableSolution.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tableSolution.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tableSolution.Location = new System.Drawing.Point(635, 428);
+            this.tableSolution.Name = "tableSolution";
+            this.tableSolution.RowCount = 2;
+            this.tableSolution.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tableSolution.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tableSolution.Size = new System.Drawing.Size(237, 241);
+            this.tableSolution.TabIndex = 15;
+            this.tableSolution.Paint += new System.Windows.Forms.PaintEventHandler(this.tableSolution_Paint);
+            // 
             // textBoxStepsPanel
             // 
             this.textBoxStepsPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
@@ -77,7 +104,7 @@
             this.textBoxStepsPanel.ForeColor = System.Drawing.Color.White;
             this.textBoxStepsPanel.Location = new System.Drawing.Point(16, 428);
             this.textBoxStepsPanel.Name = "textBoxStepsPanel";
-            this.textBoxStepsPanel.Size = new System.Drawing.Size(856, 241);
+            this.textBoxStepsPanel.Size = new System.Drawing.Size(613, 241);
             this.textBoxStepsPanel.TabIndex = 13;
             this.textBoxStepsPanel.WrapContents = false;
             // 
@@ -124,17 +151,6 @@
             this.labelPaste.Text = "Paste ShapeShifter HTML code:";
             this.labelPaste.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
-            // pboxTitle
-            // 
-            this.pboxTitle.Anchor = System.Windows.Forms.AnchorStyles.Top;
-            this.pboxTitle.BackColor = System.Drawing.Color.Transparent;
-            this.pboxTitle.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("pboxTitle.BackgroundImage")));
-            this.pboxTitle.Location = new System.Drawing.Point(298, 11);
-            this.pboxTitle.Name = "pboxTitle";
-            this.pboxTitle.Size = new System.Drawing.Size(325, 59);
-            this.pboxTitle.TabIndex = 14;
-            this.pboxTitle.TabStop = false;
-            // 
             // ShapeShifter
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -143,6 +159,7 @@
             this.BackColor = System.Drawing.Color.Black;
             this.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("$this.BackgroundImage")));
             this.ClientSize = new System.Drawing.Size(884, 681);
+            this.Controls.Add(this.tableSolution);
             this.Controls.Add(this.pboxTitle);
             this.Controls.Add(this.textBoxStepsPanel);
             this.Controls.Add(this.labelWaiting);
@@ -152,8 +169,7 @@
             this.Controls.Add(this.textBoxInput);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "ShapeShifter";
-            this.ShowIcon = false;
-            this.Text = "ShapeShifter Helper (A* Heuristic)";
+            this.Text = "ShapeShifter Helper";
             this.Load += new System.EventHandler(this.Form1_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pboxTitle)).EndInit();
             this.ResumeLayout(false);
@@ -170,6 +186,7 @@
         private RoundedLabel labelWaiting;
         private DoubleBufferedFlowLayoutPanel textBoxStepsPanel;
         private System.Windows.Forms.PictureBox pboxTitle;
+        private System.Windows.Forms.TableLayoutPanel tableSolution;
     }
 }
 

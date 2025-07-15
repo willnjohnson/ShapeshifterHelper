@@ -2,333 +2,637 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Linq; // For .Sum(), .All(), .SequenceEqual(), .Select(), .OrderBy()
-using System.Text; // For StringBuilder
-using System.Text.RegularExpressions; // For Regex parsing HTML
-using System.Threading; // For CancellationTokenSource
-using System.Threading.Tasks; // For Task.Run
-using System.Windows.Forms; // For Windows Forms UI components
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.IO;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 using WinFormsLabel = System.Windows.Forms.Label;
+using HtmlAgilityPack;
+using ShapeshifterKvho;
+using System.Diagnostics;
 
 namespace Shapeshifter
 {
     public partial class ShapeShifter : Form
     {
         private CancellationTokenSource cancelSource = null;
+        private byte[,] initialBoardState = null;
+        private int puzzleRank = 0;
+        private Label[,] boardCells;
+        private List<SolutionStep> _allSolutionSteps = new List<SolutionStep>();
 
         public ShapeShifter() => InitializeComponent();
 
-        private void textBox1_TextChanged(object sender, EventArgs e) {
-        }
-        private void label1_Click(object sender, EventArgs e) { }
-        private void label1_Click_1(object sender, EventArgs e) { }
-        private void label1_Click_2(object sender, EventArgs e) { }
         private void Form1_Load(object sender, EventArgs e)
         {
-            this.FormBorderStyle = FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false;
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            MaximizeBox = false;
 
-            labelPaste.BackColor = Color.FromArgb(64, 0, 0, 0);
+            var semiTransparent = Color.FromArgb(64, 0, 0, 0);
+            labelPaste.BackColor = semiTransparent;
             labelPaste.Padding = new Padding(3);
-
-            labelResult.BackColor = Color.FromArgb(64, 0, 0, 0);
+            labelResult.BackColor = semiTransparent;
             labelResult.Padding = new Padding(3);
-
-            labelWaiting.BackColor = Color.FromArgb(64, 0, 0, 0);
+            labelWaiting.BackColor = semiTransparent;
             labelWaiting.Padding = new Padding(2);
+
+            InitializeBoardUI();
         }
 
         /// <summary>
-        /// Parses HTML grid layout and converts tile positions to binary string format.
-        /// It assumes 'swo' is 0 (empty) and other tiles are 1 (filled).
+        /// Extracts shape ID from image URL (e.g., "blank_10x10.gif" -> "blank")
         /// </summary>
-        /// <param name="html">The HTML string containing the grid layout.</param>
-        /// <returns>A comma-separated string representing the grid (e.g., "101,010").</returns>
-        private string ParseGridLayout(string html)
+        private string ExtractShapeId(string src)
         {
-            var regex = new Regex(@"mouseon\((\d+),(\d+)\)""[^>]*>\s*<img[^>]+/([^/_]+)_\d+\.gif", RegexOptions.IgnoreCase);
-            var tileMap = new Dictionary<(int, int), string>();
-            int maxCol = -1, maxRow = -1;
-
-            foreach (Match match in regex.Matches(html))
-            {
-                int x = int.Parse(match.Groups[1].Value); // Column index
-                int y = int.Parse(match.Groups[2].Value); // Row index
-                string tileType = match.Groups[3].Value.ToLower(); // e.g., "swo", "swp"
-
-                if (x > maxCol) maxCol = x;
-                if (y > maxRow) maxRow = y;
-
-                // 'swo' is typically the empty state, others are filled
-                tileMap[(x, y)] = tileType == "swo" ? "0" : "1";
-            }
-
-            // Determine actual grid dimensions
-            int width = maxCol + 1;
-            int height = maxRow + 1;
-
-            // Initialize a 2D array for the grid and fill it
-            var gridArray = new string[height, width];
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    gridArray[y, x] = tileMap.TryGetValue((x, y), out var val) ? val : "0";
-                }
-            }
-
-            // Convert 2D array to comma-separated binary string format
-            var rows = new List<string>();
-            for (int y = 0; y < height; y++)
-            {
-                var sb = new StringBuilder();
-                for (int x = 0; x < width; x++)
-                {
-                    sb.Append(gridArray[y, x]);
-                }
-                rows.Add(sb.ToString());
-            }
-
-            return string.Join(",", rows);
+            int lastSlash = src.LastIndexOf('/');
+            int underscore = src.LastIndexOf('_');
+            return (lastSlash != -1 && underscore != -1 && underscore > lastSlash)
+                ? src.Substring(lastSlash + 1, underscore - lastSlash - 1)
+                : "unknown";
         }
 
         /// <summary>
-        /// Extracts token (puzzle piece) layouts from HTML tables and converts them
-        /// into binary pattern strings.
+        /// Parses HTML to extract board state, cycle order, and generate solver input
         /// </summary>
-        /// <param name="html">The HTML string containing the token tables.</param>
-        /// <returns>A list of binary pattern strings for each token.</returns>
-        private List<string> ExtractTokens(string html)
+        private string ExtractHTML(string html)
         {
-            var tokens = new List<string>();
-            var tableMatcher = new Regex(@"<table.*?>(.*?)<\/table>", RegexOptions.Singleline);
-            var rowMatcher = new Regex(@"<tr>(.*?)<\/tr>", RegexOptions.Singleline);
-            var fillDetector = new Regex(@"<img[^>]+square\.gif", RegexOptions.IgnoreCase); // Detects filled cells
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(html);
 
-            foreach (Match tableMatch in tableMatcher.Matches(html))
+            // Extract board dimensions from JavaScript
+            int gX = 0, gY = 0;
+            var script = doc.DocumentNode.SelectSingleNode("//script[contains(text(),'gX') and contains(text(),'gY')]");
+            if (script != null)
             {
-                var content = tableMatch.Groups[1].Value; // Content within the <table> tags
-                var rows = new List<string>();
+                var scriptText = script.InnerText;
+                var matchGX = Regex.Match(scriptText, @"gX\s*=\s*(\d+);");
+                var matchGY = Regex.Match(scriptText, @"gY\s*=\s*(\d+);");
+                if (matchGX.Success) gX = int.Parse(matchGX.Groups[1].Value);
+                if (matchGY.Success) gY = int.Parse(matchGY.Groups[1].Value);
+            }
 
-                foreach (Match rowMatch in rowMatcher.Matches(content))
+            if (gX == 0 || gY == 0)
+            {
+                ShowParseError("Could not parse board dimensions from script.");
+                return "";
+            }
+
+            // Find goal cycle table and extract cycle order
+            var goalSmall = doc.DocumentNode.SelectSingleNode("//small[contains(text(),'GOAL')]");
+            var goalTd = goalSmall?.Ancestors("td").FirstOrDefault();
+            var goalCycleRow = goalTd?.ParentNode;
+
+            if (goalCycleRow == null)
+            {
+                ShowParseError("Cannot find GOAL cycle information.");
+                return "";
+            }
+
+            // Extract cycle order from goal row images
+            var cycleOrder = goalCycleRow.Elements("td")
+                .SelectMany(td => td.Elements("img"))
+                .Where(img => !img.GetAttributeValue("src", "").Contains("arrow.gif"))
+                .Select(img => ExtractShapeId(img.GetAttributeValue("src", "")))
+                .Where(shapeId => !string.IsNullOrEmpty(shapeId))
+                .Distinct()
+                .ToList();
+
+            var mappings = cycleOrder.Select((shape, i) => new { shape, i })
+                .ToDictionary(x => x.shape, x => x.i);
+
+            puzzleRank = cycleOrder.Count;
+            if (puzzleRank == 0)
+            {
+                ShowParseError("Could not determine puzzle rank.");
+                return "";
+            }
+
+            // Extract goal shape
+            var goalImg = goalTd.SelectSingleNode(".//img[contains(@src,'.gif') and not(contains(@src,'arrow.gif'))]");
+            if (goalImg == null)
+            {
+                ShowParseError("Cannot find goal image.");
+                return "";
+            }
+
+            string goalShapeId = ExtractShapeId(goalImg.GetAttributeValue("src", ""));
+            if (!mappings.ContainsKey(goalShapeId))
+            {
+                ShowParseError($"Goal shape '{goalShapeId}' not in cycle order.");
+                return "";
+            }
+
+            int goalIndex = mappings[goalShapeId];
+
+            // Extract board state
+            var boardTable = doc.DocumentNode.SelectSingleNode("//table[@align='center' and @cellpadding='0']");
+            var boardRows = boardTable?.SelectNodes(".//tr");
+
+            if (boardRows == null || boardRows.Count != gY)
+            {
+                ShowParseError($"Expected {gY} rows in board but found {boardRows?.Count ?? 0}.");
+                return "";
+            }
+
+            initialBoardState = new byte[gY, gX];
+            for (int r = 0; r < gY; r++)
+            {
+                var imgs = boardRows[r].SelectNodes(".//img");
+                if (imgs?.Count != gX)
                 {
-                    // Split row into cells and determine if each cell is filled or empty
-                    var cells = rowMatch.Groups[1].Value.Split(new[] { "</td>" }, StringSplitOptions.None);
-                    var sb = new StringBuilder();
-                    foreach (var cell in cells)
+                    ShowParseError($"Expected {gX} columns in row {r} but found {imgs?.Count ?? 0}.");
+                    return "";
+                }
+
+                for (int c = 0; c < gX; c++)
+                {
+                    var shapeId = ExtractShapeId(imgs[c].GetAttributeValue("src", ""));
+                    initialBoardState[r, c] = (byte)(mappings.TryGetValue(shapeId, out int value) ? value : 0);
+                }
+            }
+
+            // Parse shapes for solver
+            var shapesForSolver = new List<string>();
+
+            // Helper to parse shape tables
+            Func<HtmlNode, string> parseShapeTable = (table) =>
+            {
+                var points = new List<(int x, int y)>();
+                var rows = table.SelectNodes(".//tr");
+                if (rows == null) return null;
+
+                for (int r = 0; r < rows.Count; r++)
+                {
+                    var cells = rows[r].SelectNodes(".//td");
+                    if (cells == null) continue;
+
+                    for (int c = 0; c < cells.Count; c++)
                     {
-                        sb.Append(fillDetector.IsMatch(cell) ? "1" : "0");
+                        if (cells[c].SelectSingleNode(".//img[contains(@src, 'square.gif')]") != null)
+                            points.Add((c, r));
                     }
-                    rows.Add(sb.ToString());
                 }
 
-                // Trim trailing empty columns from the token pattern
-                int maxCol = 0;
-                for (int col = 0; ; col++)
-                {
-                    bool foundFilledInCol = rows.Any(row => col < row.Length && row[col] == '1');
-                    if (!foundFilledInCol) break; // No more '1's in this column or beyond
-                    maxCol = col;
-                }
+                if (!points.Any()) return null;
 
-                // Trim empty rows and apply column trimming
-                var cleanRows = rows
-                    .Select(r => r.Substring(0, Math.Min(r.Length, maxCol + 1))) // Trim columns
-                    .Where(r => r.Contains('1')) // Remove completely empty rows
-                    .ToList();
+                // Normalize to bounding box
+                int minX = points.Min(p => p.x), minY = points.Min(p => p.y);
+                var flatIndices = points
+                    .Select(p => (p.y - minY) * gX + (p.x - minX))
+                    .OrderBy(n => n);
 
-                if (cleanRows.Count > 0)
-                {
-                    tokens.Add(string.Join(",", cleanRows));
-                }
+                return $"{points.Count} {string.Join(" ", flatIndices)}";
+            };
+
+            // Parse active and next shapes
+            var activeHeader = doc.DocumentNode.SelectSingleNode("//big[contains(text(),'ACTIVE SHAPE')]");
+            activeHeader?.ParentNode.SelectNodes("following-sibling::table[@cellpadding='15']//table[@cellpadding='0']")
+                ?.ToList().ForEach(table => {
+                    var shapeStr = parseShapeTable(table);
+                    if (shapeStr != null) shapesForSolver.Add(shapeStr);
+                });
+
+            var nextHeader = doc.DocumentNode.SelectSingleNode("//big[contains(text(),'NEXT SHAPES')]");
+            nextHeader?.ParentNode.SelectNodes("following-sibling::table[@cellpadding='15']//td//table[@cellpadding='0']")
+                ?.ToList().ForEach(table => {
+                    var shapeStr = parseShapeTable(table);
+                    if (shapeStr != null) shapesForSolver.Add(shapeStr);
+                });
+
+            // Build solver input
+            var sb = new StringBuilder();
+            sb.AppendLine(gX.ToString());
+            sb.AppendLine(gY.ToString());
+
+            for (int row = 0; row < gY; row++)
+            {
+                sb.AppendLine(string.Join(" ", Enumerable.Range(0, gX).Select(col => initialBoardState[row, col])));
             }
 
-            return tokens;
+            sb.AppendLine(goalIndex.ToString());
+            sb.AppendLine(shapesForSolver.Count.ToString());
+            shapesForSolver.ForEach(s => sb.AppendLine(s));
+
+            return sb.ToString();
         }
 
         /// <summary>
-        /// Handles start/stop button clicks for puzzle solving.
-        /// Initiates the IDA* search or cancels it if already running.
+        /// Shows parse error message and marks parsing as failed
+        /// </summary>
+        private void ShowParseError(string message)
+        {
+            MessageBox.Show(message, "Parsing Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            initialBoardState = null;
+        }
+
+        /// <summary>
+        /// Parses solver output into structured solution steps with board states and highlights
+        /// </summary>
+        private List<SolutionStep> ParseSolverResult(string solverOutput, int boardRows, int boardCols)
+        {
+            var steps = new List<SolutionStep>();
+            if (string.IsNullOrWhiteSpace(solverOutput) || boardRows == 0 || boardCols == 0)
+                return steps;
+
+            var reader = new StringReader(solverOutput);
+            string line;
+
+            while ((line = reader.ReadLine()) != null)
+            {
+                var placementMatch = Regex.Match(line.Trim(), @"Column:\s*(\d+),\s*Row:\s*(\d+)");
+                if (!placementMatch.Success) continue;
+
+                int col = int.Parse(placementMatch.Groups[1].Value);
+                int row = int.Parse(placementMatch.Groups[2].Value);
+
+                var currentStepBoardState = new byte[boardRows, boardCols];
+                var highlightedCells = new List<(int R, int C)>();
+
+                for (int r = 0; r < boardRows; r++)
+                {
+                    if ((line = reader.ReadLine()) == null) break;
+
+                    var cellMatches = Regex.Matches(line, @"(\d+)(\+|\-)?\|?");
+
+                    for (int c = 0; c < boardCols; c++)
+                    {
+                        if (c < cellMatches.Count)
+                        {
+                            var match = cellMatches[c];
+                            if (byte.TryParse(match.Groups[1].Value, out byte val))
+                            {
+                                currentStepBoardState[r, c] = val;
+                                if (match.Groups[2].Value == "+")
+                                    highlightedCells.Add((r, c));
+                            }
+                        }
+                    }
+                }
+
+                steps.Add(new SolutionStep
+                {
+                    BoardState = currentStepBoardState,
+                    PlacementX = col,
+                    PlacementY = row,
+                    HighlightedCells = highlightedCells
+                });
+            }
+            return steps;
+        }
+
+        /// <summary>
+        /// Handles puzzle solving - starts solver or cancels if running
         /// </summary>
         private async void startStopButton_Click(object sender, EventArgs e)
         {
             if (cancelSource != null)
             {
-                // If a solution is in progress, cancel it.
                 cancelSource.Cancel();
-                btnStartStop.Enabled = false; // Disable button while cancelling
+                btnStartStop.Enabled = false;
                 return;
             }
 
-            // Start a new solving operation
-            cancelSource = new CancellationTokenSource();
+            // Reset UI state
+            InitializeBoardUI();
+            _allSolutionSteps.Clear();
             textBoxStepsPanel.Controls.Clear();
-            SetUIState(true); // Set UI to "solving" mode
 
-            string html = textBoxInput.Text;
-            bool solved = false;
-            Dictionary<int, (int X, int Y)> placements = null;
-            List<Token> tokens = null;
-            BitGrid initialGrid = null;
+            string dat = ExtractHTML(textBoxInput.Text);
+            if (string.IsNullOrEmpty(dat) || initialBoardState == null || puzzleRank == 0)
+            {
+                SetUIState(false);
+                return;
+            }
+
+            cancelSource = new CancellationTokenSource();
+            SetUIState(true);
+
+            var startTime = DateTime.Now;
+            string solverResult = null;
 
             try
             {
-                // Run the computationally intensive part on a separate thread
-                await Task.Run(() =>
-                {
-                    // Parse the puzzle input
-                    string gridPattern = ParseGridLayout(html);
-                    var tokenPatterns = ExtractTokens(html);
+                var timer = new System.Windows.Forms.Timer { Interval = 250 };
+                timer.Tick += (s, args) => {
+                    var elapsed = DateTime.Now - startTime;
+                    labelWaiting.Text = $"Calculating... [{elapsed.TotalSeconds:F1}s]";
+                };
+                timer.Start();
 
-                    // Create Token objects with their original index for ordering
-                    tokens = tokenPatterns.Select((p, i) => new Token(p, i)).ToList();
-                    initialGrid = new BitGrid(gridPattern);
-
-                    // Initialize and run the solver
-                    var solver = new Solver(initialGrid, tokens, cancelSource.Token, count =>
-                    {
-                        this.Invoke((MethodInvoker)delegate
-                        {
-                            labelWaiting.Text = $"Calculating... [{count:N0} expanded nodes]";
-                        });
-                    });
-
-                    placements = solver.SolveIDAStar(); // Use IDA* to solve
-                    solved = placements != null;
-                }, cancelSource.Token); // Pass cancellation token to Task.Run
+                solverResult = await Task.Run(() => ShapeshifterKvho.Solver.Solve(dat), cancelSource.Token);
+                timer.Stop();
             }
             catch (OperationCanceledException)
             {
-                // Task was cancelled
-                solved = false;
-                placements = null;
+                AddStatusLabel("Operation cancelled.", Color.DarkOrange);
             }
             catch (Exception ex)
             {
-                // Catch other potential exceptions during solving
-                solved = false;
-                placements = null;
-                MessageBox.Show($"An error occurred: {ex.Message}\n\n{ex.StackTrace}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!string.IsNullOrEmpty(dat) && initialBoardState != null)
+                {
+                    MessageBox.Show($"Solver error: {ex.Message}\n\nStackTrace:\n{ex.StackTrace}",
+                        "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    AddStatusLabel($"Solver error: {ex.Message}", Color.Red);
+                }
             }
             finally
             {
-                // Clean up resources and reset UI regardless of outcome
-                cancelSource.Dispose();
+                cancelSource?.Dispose();
                 cancelSource = null;
-                SetUIState(false); // Set UI to "not solving" mode
+                SetUIState(false);
             }
 
-            DisplayResults(solved, placements, tokens);
+            // Process results
+            if (!string.IsNullOrEmpty(solverResult))
+            {
+                _allSolutionSteps = ParseSolverResult(solverResult, initialBoardState.GetLength(0), initialBoardState.GetLength(1));
+
+                if (_allSolutionSteps.Any())
+                {
+                    DisplayResults(true, _allSolutionSteps);
+                    var firstStep = _allSolutionSteps[0];
+                    UpdateBoardUI((byte[,])firstStep.BoardState.Clone(), firstStep.HighlightedCells);
+                }
+                else
+                {
+                    SetNoSolutionUI();
+                }
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(labelResult.Text))
+                    SetNoSolutionUI();
+                UpdateBoardUI(null, null);
+            }
         }
 
         /// <summary>
-        /// Sets the UI state (buttons, labels, text boxes) based on whether the solver is active.
+        /// Sets UI to show no solution found
         /// </summary>
-        /// <param name="solving">True if the solver is currently running, false otherwise.</param>
+        private void SetNoSolutionUI()
+        {
+            AddStatusLabel("No arrangement found.", Color.Red);
+        }
+
+        /// <summary>
+        /// Updates UI state based on solver status
+        /// </summary>
         private void SetUIState(bool solving)
         {
             labelWaiting.Visible = solving;
             labelWaiting.Text = solving ? "Calculating..." : "";
             btnStartStop.Text = solving ? "Stop" : "Start";
-            btnStartStop.Enabled = true; // Always enable start/stop button after operation
+            btnStartStop.Enabled = true;
+            textBoxInput.Enabled = !solving;
         }
 
         /// <summary>
-        /// Displays the puzzle solving results in the UI, listing steps if solved,
-        /// or showing status messages if cancelled/not found.
+        /// Initializes board UI grid based on current board state
         /// </summary>
-        /// <param name="solved">True if a solution was found.</param>
-        /// <param name="placements">Dictionary of token placements, if solved.</param>
-        /// <param name="tokens">List of original Token objects.</param>
-        private void DisplayResults(bool solved, Dictionary<int, (int X, int Y)> placements, List<Token> tokens)
+        private void InitializeBoardUI()
         {
-            if (solved && placements != null)
+            tableSolution.Controls.Clear();
+            tableSolution.ColumnStyles.Clear();
+            tableSolution.RowStyles.Clear();
+
+            if (initialBoardState == null) return;
+
+            int rows = initialBoardState.GetLength(0);
+            int cols = initialBoardState.GetLength(1);
+
+            tableSolution.ColumnCount = cols;
+            tableSolution.RowCount = rows;
+            boardCells = new Label[rows, cols];
+
+            float colWidth = 100f / cols;
+            float rowHeight = 100f / rows;
+
+            // Add column and row styles
+            for (int i = 0; i < cols; i++)
+                tableSolution.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, colWidth));
+            for (int i = 0; i < rows; i++)
+                tableSolution.RowStyles.Add(new RowStyle(SizeType.Percent, rowHeight));
+
+            // Create board cells
+            for (int r = 0; r < rows; r++)
             {
-                labelWaiting.Text = "Solved!";
-                // Order placements by original token index for display consistency
-                var orderedPlacements = tokens
-                    .Where(t => placements.ContainsKey(t.OriginalIndex))
-                    .Select(t => (token: t, placement: placements[t.OriginalIndex]))
-                    .OrderBy(x => x.token.OriginalIndex)
-                    .ToList();
-
-                for (int i = 0; i < orderedPlacements.Count; i++)
+                for (int c = 0; c < cols; c++)
                 {
-                    var (token, pos) = orderedPlacements[i];
-
-                    // Calculate the step number (OriginalIndex is 0-based, so add 1)
-                    int stepNumber = token.OriginalIndex + 1;
-                    // Format to "01", "02", etc., ensuring consistent width
-                    string formattedStep = stepNumber.ToString("D2");
-
-                    // Create a FlowLayoutPanel for each step entry to hold controls horizontally
-                    var flowPanel = new FlowLayoutPanel
+                    var cell = new Label
                     {
-                        AutoSize = true, // Important: let it size itself to its contents
-                        FlowDirection = FlowDirection.LeftToRight, // Arrange controls from left to right
-                        WrapContents = false, // Keep all contents on a single line
-                        Padding = new Padding(0), // No internal padding for the flow panel
-                        Margin = new Padding(5, 5, 5, 5), // External margin for spacing between step entries
-                        BackColor = Color.FromArgb(0, 0, 0, 0)
+                        Dock = DockStyle.Fill,
+                        Margin = Padding.Empty,
+                        Padding = Padding.Empty,
+                        TextAlign = ContentAlignment.MiddleCenter,
+                        Font = new Font("Segoe UI", 8),
+                        Text = "",
+                        BorderStyle = BorderStyle.FixedSingle,
+                        BackColor = Color.FromArgb(40, 40, 40),
+                        ForeColor = Color.White
                     };
-
-                    // 1. CheckBox for "Step 01:"
-                    var stepCheckbox = new CheckBox
-                    {
-                        Text = $"Step {formattedStep}:", // Using the formatted step number
-                        AutoSize = true, // Sizes to fit its text
-                        Padding = new Padding(0), // No internal padding
-                        Margin = new Padding(0, 3, 0, 0), // Top margin (3px) to visually align with labels
-                        Font = new Font("Segoe UI", 9) // Explicitly set font to match labels if desired
-                    };
-                    // Attach the event handler to highlight when checked
-                    stepCheckbox.CheckedChanged += (s, args) => HighlightStep();
-                    flowPanel.Controls.Add(stepCheckbox);
-
-                    // 2. Label for "Row Y," in Red
-                    var rowLabel = new Label
-                    {
-                        Text = $"Row {pos.Y},",
-                        AutoSize = true,
-                        ForeColor = Color.Red, // Set text color to Red
-                        Font = new Font("Segoe UI", 9), // Use a standard font like CheckBox
-                        Padding = new Padding(0),
-                        Margin = new Padding(15, 3, 0, 0) // Left margin for "tab" spacing (15px from checkbox)
-                    };
-                    flowPanel.Controls.Add(rowLabel);
-
-                    // 3. Label for "Column X" in Red
-                    var colLabel = new Label
-                    {
-                        Text = $"Column {pos.X}",
-                        AutoSize = true,
-                        ForeColor = Color.Red, // Set text color to Red
-                        Font = new Font("Segoe UI", 9), // Use a standard font like CheckBox
-                        Padding = new Padding(0),
-                        Margin = new Padding(5, 3, 0, 0) // Left margin for spacing (5px from rowLabel)
-                    };
-                    flowPanel.Controls.Add(colLabel);
-
-                    // Add the flowPanel (which contains the checkbox and labels)
-                    textBoxStepsPanel.Controls.Add(flowPanel);
+                    boardCells[r, c] = cell;
+                    tableSolution.Controls.Add(cell, c, r);
                 }
             }
-            else if (placements == null && cancelSource == null) // If placements is null AND not cancelled means no solution found
-            {
-                labelWaiting.Text = "No arrangement found.";
-                AddStatusLabel("No arrangement found.", Color.Red);
-            }
-            else // If placements is null AND cancelSource is null (due to finally block reset) -> cancelled
-            {
-                labelWaiting.Text = "Operation cancelled.";
-                AddStatusLabel("Operation cancelled.", Color.DarkOrange);
-            }
-
-            HighlightStep(); // Initial highlighting
         }
 
         /// <summary>
-        /// Adds a status label to the steps panel.
+        /// Updates board display with current state and highlights
+        /// </summary>
+        private void UpdateBoardUI(byte[,] boardState, List<(int R, int C)> highlightedCells)
+        {
+            if (boardState == null || boardState.GetLength(0) == 0 || boardState.GetLength(1) == 0)
+            {
+                InitializeBoardUI();
+                return;
+            }
+
+            // Reinitialize if dimensions changed
+            if (boardCells == null || boardCells.GetLength(0) != boardState.GetLength(0) ||
+                boardCells.GetLength(1) != boardState.GetLength(1))
+            {
+                InitializeBoardUI();
+                if (boardCells == null) return;
+            }
+
+            var highlightSet = new HashSet<(int, int)>(highlightedCells ?? new List<(int, int)>());
+
+            for (int r = 0; r < boardState.GetLength(0); r++)
+            {
+                for (int c = 0; c < boardState.GetLength(1); c++)
+                {
+                    var cell = boardCells[r, c];
+                    byte value = boardState[r, c];
+
+                    cell.Text = value.ToString();
+
+                    // Set colors based on value
+                    var colors = new[] {
+                        Color.FromArgb(0x2E, 0x8B, 0x57), // SeaGreen
+                        Color.FromArgb(0xB2, 0x22, 0x22), // Firebrick
+                        Color.FromArgb(0xFF, 0x8C, 0x00), // DarkOrange
+                        Color.FromArgb(0x46, 0x82, 0xB4), // SteelBlue
+                        Color.FromArgb(0x8B, 0x00, 0x8B)  // DarkMagenta
+                    };
+
+                    if (highlightSet.Contains((r, c)))
+                    {
+                        cell.BackColor = Color.White;
+                        cell.ForeColor = Color.Black;
+                    }
+                    else
+                    {
+                        cell.BackColor = value < colors.Length ? colors[value] : Color.Gray;
+                        cell.ForeColor = Color.White;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Displays solution results in UI with interactive step controls
+        /// </summary>
+        private void DisplayResults(bool solved, List<SolutionStep> solutionSteps)
+        {
+            textBoxStepsPanel.Controls.Clear();
+            labelWaiting.Text = "";
+
+            if (!solved || solutionSteps?.Any() != true)
+            {
+                SetNoSolutionUI();
+                UpdateBoardUI(null, null);
+                return;
+            }
+
+            for (int i = 0; i < solutionSteps.Count; i++)
+            {
+                var step = solutionSteps[i];
+                var flowPanel = new FlowLayoutPanel
+                {
+                    AutoSize = true,
+                    FlowDirection = FlowDirection.LeftToRight,
+                    WrapContents = false,
+                    Padding = Padding.Empty,
+                    Margin = new Padding(5),
+                    BackColor = Color.Transparent
+                };
+
+                string stepNum = (i + 1).ToString("D2");
+
+                // Add regular checkbox for all steps except the last
+                var checkbox = new CheckBox
+                {
+                    Text = $"Step {stepNum}:",
+                    AutoSize = true,
+                    Margin = new Padding(0, 3, 0, 0),
+                    Font = new Font("Segoe UI", 9),
+                    Tag = i,
+                    Checked = false
+                };
+                checkbox.CheckedChanged += StepCheckbox_CheckedChanged;
+
+                if (i == solutionSteps.Count - 1)
+                {
+                    // Hide the box by shifting text right and overlapping box
+                    //checkbox.TextAlign = ContentAlignment.MiddleLeft;
+                    //checkbox.Padding = new Padding(4, 0, 0, 0); // simulate checkbox spacing
+                    checkbox.Region = new Region(new Rectangle(18, 0, checkbox.PreferredSize.Width, checkbox.Height));
+                }
+
+                flowPanel.Controls.Add(checkbox);
+
+                // Add row and column labels
+                var rowLabel = new Label
+                {
+                    Text = $"Row {step.PlacementY},",
+                    AutoSize = true,
+                    ForeColor = Color.Red,
+                    Font = new Font("Segoe UI", 9),
+                    Margin = new Padding(5, 3, 0, 0)
+                };
+                flowPanel.Controls.Add(rowLabel);
+
+                flowPanel.Controls.Add(new Label
+                {
+                    Text = $"Column {step.PlacementX}",
+                    AutoSize = true,
+                    ForeColor = Color.Red,
+                    Font = new Font("Segoe UI", 9),
+                    Padding = new Padding(5, 3, 0, 0)
+                });
+
+                textBoxStepsPanel.Controls.Add(flowPanel);
+            }
+
+            HighlightStep();
+        }
+
+        /// <summary>
+        /// Handles step checkbox changes with sequential logic
+        /// </summary>
+        private void StepCheckbox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!(sender is CheckBox changedCb)) return;
+
+            int changedIndex = (int)changedCb.Tag;
+
+            if (changedCb.Checked)
+            {
+                // Check all previous steps
+                for (int i = 0; i < changedIndex; i++)
+                {
+                    if (textBoxStepsPanel.Controls[i] is FlowLayoutPanel fp &&
+                        fp.Controls[0] is CheckBox cb && !cb.Checked)
+                        cb.Checked = true;
+                }
+            }
+            else
+            {
+                // Uncheck all subsequent steps
+                for (int i = changedIndex + 1; i < textBoxStepsPanel.Controls.Count; i++)
+                {
+                    if (textBoxStepsPanel.Controls[i] is FlowLayoutPanel fp &&
+                        fp.Controls[0] is CheckBox cb && cb.Checked)
+                        cb.Checked = false;
+                }
+            }
+
+            UpdateBoardVisualization();
+            HighlightStep();
+        }
+
+        /// <summary>
+        /// Updates board visualization based on checked steps
+        /// </summary>
+        private void UpdateBoardVisualization()
+        {
+            if (!_allSolutionSteps.Any())
+            {
+                UpdateBoardUI(null, null);
+                return;
+            }
+
+            // Find last checked step
+            int lastCheckedIndex = -1;
+            for (int i = textBoxStepsPanel.Controls.Count - 1; i >= 0; i--)
+            {
+                if (textBoxStepsPanel.Controls[i] is FlowLayoutPanel fp &&
+                    fp.Controls[0] is CheckBox cb && cb.Checked)
+                {
+                    lastCheckedIndex = (int)cb.Tag;
+                    break;
+                }
+            }
+
+            var stepToDisplay = _allSolutionSteps[lastCheckedIndex != -1 ? lastCheckedIndex + 1 : 0];
+            UpdateBoardUI((byte[,])stepToDisplay.BoardState.Clone(), stepToDisplay.HighlightedCells);
+        }
+
+        /// <summary>
+        /// Adds status label to steps panel
         /// </summary>
         private void AddStatusLabel(string text, Color color)
         {
@@ -343,228 +647,118 @@ namespace Shapeshifter
         }
 
         /// <summary>
-        /// Highlights (or unhighlights) solution steps based on checkbox state.
+        /// Applies visual styling to steps based on checkbox state
         /// </summary>
         private void HighlightStep()
         {
+            var baseFont = new Font("Segoe UI", 9);
+
             foreach (Control control in textBoxStepsPanel.Controls)
             {
-                if (control is FlowLayoutPanel flowPanel)
+                if (!(control is FlowLayoutPanel flowPanel)) continue;
+
+                var cb = flowPanel.Controls.OfType<CheckBox>().FirstOrDefault();
+                var labels = flowPanel.Controls.OfType<Label>().ToArray();
+
+                if (cb != null) // Has checkbox
                 {
-                    CheckBox cb = null;
-                    Label rowLabel = null;
-                    Label colLabel = null;
+                    var rowLabel = labels.Length > 0 ? labels[0] : null;
+                    var colLabel = labels.Length > 1 ? labels[1] : null;
 
-                    // Find the CheckBox and Labels within the FlowLayoutPanel
-                    if (flowPanel.Controls.Count > 0 && flowPanel.Controls[0] is CheckBox)
+                    if (cb.Checked)
                     {
-                        cb = (CheckBox)flowPanel.Controls[0];
+                        cb.Font = new Font(baseFont, FontStyle.Strikeout);
+                        cb.ForeColor = Color.DarkGray;
+                        SetLabelStyle(rowLabel, baseFont, FontStyle.Strikeout, Color.DarkGray);
+                        SetLabelStyle(colLabel, baseFont, FontStyle.Strikeout, Color.DarkGray);
                     }
-                    if (flowPanel.Controls.Count > 1 && flowPanel.Controls[1] is Label)
+                    else
                     {
-                        rowLabel = (Label)flowPanel.Controls[1];
+                        cb.Font = baseFont;
+                        cb.ForeColor = Color.White;
+                        SetLabelStyle(rowLabel, baseFont, FontStyle.Regular, Color.Red);
+                        SetLabelStyle(colLabel, baseFont, FontStyle.Regular, Color.Red);
                     }
-                    if (flowPanel.Controls.Count > 2 && flowPanel.Controls[2] is Label)
+                }
+                else // Final step without checkbox
+                {
+                    foreach (var label in labels)
                     {
-                        colLabel = (Label)flowPanel.Controls[2];
-                    }
-
-                    if (cb != null && rowLabel != null && colLabel != null)
-                    {
-                        // Apply/Remove BorderStyle for the whole entry
-                        flowPanel.BorderStyle = cb.Checked ? BorderStyle.None : BorderStyle.FixedSingle;
-
-                        Font baseFont = new Font("Segoe UI", 9); // Or get it from one of your labels initially
-
-                        if (cb.Checked)
-                        {
-                            // Apply strikethrough to all text in the line
-                            cb.Font = new Font(baseFont, baseFont.Style | FontStyle.Strikeout);
-                            rowLabel.Font = new Font(baseFont, baseFont.Style | FontStyle.Strikeout);
-                            colLabel.Font = new Font(baseFont, baseFont.Style | FontStyle.Strikeout);
-
-                            // Optional: Change forecolor to a muted color for checked items
-                            cb.ForeColor = Color.DarkGray;
-                            rowLabel.ForeColor = Color.DarkGray;
-                            colLabel.ForeColor = Color.DarkGray;
-                        }
+                        if (label.Text.Contains("Step"))
+                            label.ForeColor = Color.White;
                         else
-                        {
-                            // Remove strikethrough
-                            cb.Font = baseFont; // Reset to original font style
-                            rowLabel.Font = baseFont; // Reset to original font style
-                            colLabel.Font = baseFont; // Reset to original font style
-
-                            // Reset forecolor to original values
-                            cb.ForeColor = Color.White; // Default text color
-                            rowLabel.ForeColor = Color.Red; // Original red color
-                            colLabel.ForeColor = Color.Red; // Original red color
-                        }
+                            label.ForeColor = Color.Red;
                     }
                 }
             }
         }
 
-        private void label2_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Helper to set label font and color
+        /// </summary>
+        private void SetLabelStyle(Label label, Font baseFont, FontStyle style, Color color)
         {
+            if (label == null) return;
+            label.Font = new Font(baseFont, style);
+            label.ForeColor = color;
         }
 
-        private void labelTitle_Click(object sender, EventArgs e)
+        private void tableSolution_Paint(object sender, PaintEventArgs e)
         {
-
+            // Custom painting logic can be added here if needed
         }
     }
 
     /// <summary>
-    /// Represents the puzzle grid using bitmasks for efficient operations. Immutable.
-    /// This implementation assumes number of ranks equals 2 (binary 0s and 1s).
-    /// Grid width (Cols) cannot exceed 64.
+    /// Represents a solution step with board state and placement info
     /// </summary>
-    public class BitGrid : IEquatable<BitGrid>
+    public class SolutionStep
     {
-        private readonly ulong[] _rows; // Each ulong represents a row of the grid
+        public byte[,] BoardState { get; set; }
+        public int PlacementX { get; set; }
+        public int PlacementY { get; set; }
+        public List<(int R, int C)> HighlightedCells { get; set; } = new List<(int R, int C)>();
+    }
+
+    /// <summary>
+    /// Grid representation using byte array for multiple ranks
+    /// </summary>
+    public class RankGrid
+    {
+        private byte[,] _grid;
         public int Rows { get; }
         public int Cols { get; }
+        public int NumRanks { get; }
 
-        /// <summary>
-        /// Initializes a BitGrid from a comma-separated binary string (e.g., "101,010").
-        /// </summary>
-        /// <param name="data">The string representing the grid layout.</param>
-        public BitGrid(string data)
+        public RankGrid(byte[,] initialGridData, int numRanks)
         {
-            var rowData = data.Split(',');
-            Rows = rowData.Length;
-            Cols = rowData[0].Length;
+            Rows = initialGridData.GetLength(0);
+            Cols = initialGridData.GetLength(1);
+            NumRanks = numRanks;
+            _grid = new byte[Rows, Cols];
+            Buffer.BlockCopy(initialGridData, 0, _grid, 0, initialGridData.Length * sizeof(byte));
+        }
 
-            if (Cols > 64)
-            {
-                throw new ArgumentOutOfRangeException(nameof(data), "Grid width cannot exceed 64 for ulong bitmask representation.");
-            }
+        public byte[,] GetGridArray() => _grid;
+        public byte GetTile(int row, int col) => _grid[row, col];
 
-            _rows = new ulong[Rows];
-
+        public bool IsCleared()
+        {
             for (int r = 0; r < Rows; r++)
-            {
-                ulong rowValue = 0;
                 for (int c = 0; c < Cols; c++)
-                {
-                    if (rowData[r][c] == '1')
-                    {
-                        rowValue |= (1UL << c);
-                    }
-                }
-                _rows[r] = rowValue;
-            }
+                    if (_grid[r, c] != 0) return false;
+            return true;
         }
 
-        /// <summary>
-        /// Private constructor for creating new BitGrid instances based on an existing row array.
-        /// Used by PlaceToken to ensure immutability.
-        /// </summary>
-        private BitGrid(ulong[] existingRows, int rows, int cols)
-        {
-            this._rows = (ulong[])existingRows.Clone(); // Deep copy the ulong array
-            Rows = rows;
-            Cols = cols;
-        }
+        public RankGrid Clone() => new RankGrid((byte[,])_grid.Clone(), NumRanks);
 
-        /// <summary>
-        /// Creates a new BitGrid instance with a token's placement applied.
-        /// Assumes delta is effectively 1 for a binary (XOR) operation.
-        /// </summary>
-        /// <param name="token">The token to place.</param>
-        /// <param name="col">The column coordinate for the top-left of the token's bounding box.</param>
-        /// <param name="row">The row coordinate for the top-left of the token's bounding box.</param>
-        /// <param name="delta">Ignored in this binary implementation (always assumes XOR).</param>
-        /// <returns>A new BitGrid instance representing the updated state.</returns>
-        public BitGrid PlaceToken(Token token, int col, int row, int delta) // delta is ignored for XOR operation
-        {
-            var newRows = (ulong[])this._rows.Clone(); // Create a copy of the current rows
-
-            foreach (var (x, y) in token.Points) // Iterate through points relative to token's origin
-            {
-                int absX = col + x; // Absolute column on the grid
-                int absY = row + y; // Absolute row on the grid
-
-                // Check if the absolute coordinates are within the grid boundaries
-                if (absX >= 0 && absX < Cols && absY >= 0 && absY < Rows)
-                {
-                    // Flip the bit at (absY, absX) using XOR
-                    newRows[absY] ^= (1UL << absX);
-                }
-            }
-            return new BitGrid(newRows, this.Rows, this.Cols);
-        }
-
-        /// <summary>
-        /// Checks if all tiles in the grid are cleared (have a value of 0).
-        /// </summary>
-        /// <returns>True if all tiles are 0, false otherwise.</returns>
-        public bool IsCleared() => _rows.All(rowVal => rowVal == 0UL);
-
-        /// <summary>
-        /// Counts the number of non-zero tiles in the grid using a manual PopCount implementation.
-        /// Used as a heuristic in IDA* search (lower count means closer to goal).
-        /// </summary>
-        /// <returns>The number of filled (non-zero) tiles.</returns>
-        public int CountFilledTiles() => _rows.Sum(CountSetBits); // Changed to use local CountSetBits
-
-        /// <summary>
-        /// Counts the number of set bits (1s) in a ulong using a software fallback.
-        /// This method is necessary if BitOperations.PopCount is not available (e.g., older .NET Framework).
-        /// </summary>
-        private static int CountSetBits(ulong n)
-        {
-            n = n - ((n >> 1) & 0x5555555555555555UL);
-            n = (n & 0x3333333333333333UL) + ((n >> 2) & 0x3333333333333333UL);
-            n = (n + (n >> 4)) & 0x0F0F0F0F0F0F0F0FUL;
-            return (int)((n * 0x0101010101010101UL) >> 56);
-        }
-
-        /// <summary>
-        /// Determines if this BitGrid instance is equal to another BitGrid instance.
-        /// Equality is based on dimensions and the sequence of ulong row values.
-        /// </summary>
-        public bool Equals(BitGrid other)
-        {
-            if (ReferenceEquals(null, other)) return false;
-            if (ReferenceEquals(this, other)) return true;
-            if (Rows != other.Rows || Cols != other.Cols) return false;
-            return _rows.SequenceEqual(other._rows);
-        }
-
-        public override bool Equals(object obj) => Equals(obj as BitGrid);
-
-        /// <summary>
-        /// Generates a hash code for the BitGrid instance. Essential for efficient use
-        /// in hash-based collections (Dictionary, HashSet).
-        /// </summary>
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + Rows.GetHashCode();
-                hash = hash * 23 + Cols.GetHashCode();
-                foreach (var val in _rows)
-                    hash = hash * 23 + val.GetHashCode();
-                return hash;
-            }
-        }
-
-        /// <summary>
-        /// Provides a string representation of the grid (e.g., "101,010"),
-        /// useful for debugging.
-        /// </summary>
         public override string ToString()
         {
             var sb = new StringBuilder();
             for (int r = 0; r < Rows; r++)
             {
                 for (int c = 0; c < Cols; c++)
-                {
-                    sb.Append((_rows[r] & (1UL << c)) != 0 ? '1' : '0');
-                }
+                    sb.Append(_grid[r, c]);
                 if (r < Rows - 1) sb.Append(',');
             }
             return sb.ToString();
@@ -572,376 +766,288 @@ namespace Shapeshifter
     }
 
     /// <summary>
-    /// Represents a single puzzle piece (token). Immutable.
+    /// Represents a puzzle piece with position and value data
     /// </summary>
-    public class Token : IEquatable<Token>
+    public class Token
     {
-        public List<(int X, int Y)> Points { get; } // Relative coordinates of filled cells
-        public int Height { get; } // Bounding box height
-        public int Width { get; } // Bounding box width
-        public int Area => Points.Count; // Number of filled cells
-        public int OriginalIndex { get; } // Original order index of the token from input
+        public IReadOnlyList<(int X, int Y, byte Value)> Points { get; }
+        public int Height { get; }
+        public int Width { get; }
+        public int Area => Points.Count;
+        public int OriginalIndex { get; }
 
-        /// <summary>
-        /// Initializes a Token from a binary layout string (e.g., "11,01").
-        /// </summary>
-        /// <param name="layout">The string representing the token's shape.</param>
-        /// <param name="originalIndex">The zero-based index of this token as it appeared in the input.</param>
-        public Token(string layout, int originalIndex)
+        public Token(IEnumerable<(int X, int Y, byte Value)> points, int originalIndex, int width, int height)
         {
-            var rows = layout.Split(',');
-            Height = rows.Length;
-            Width = rows[0].Length;
-            Points = new List<(int X, int Y)>();
+            Points = points.ToList().AsReadOnly();
             OriginalIndex = originalIndex;
-
-            for (int y = 0; y < Height; y++)
-            {
-                for (int x = 0; x < Width; x++)
-                {
-                    if (rows[y][x] == '1')
-                    {
-                        Points.Add((x, y));
-                    }
-                }
-            }
+            Width = width;
+            Height = height;
         }
 
-        /// <summary>
-        /// Generates a hash code for the Token. For this problem, tokens are distinct
-        /// if their original index is different (even if shapes are identical).
-        /// </summary>
-        public override int GetHashCode()
-        {
-            return OriginalIndex.GetHashCode();
-        }
-
-        /// <summary>
-        /// Determines if this Token instance is equal to another Token instance.
-        /// Equality is based solely on the OriginalIndex.
-        /// </summary>
-        public bool Equals(Token other)
-        {
-            if (ReferenceEquals(null, other)) return false;
-            if (ReferenceEquals(this, other)) return true;
-            return OriginalIndex == other.OriginalIndex;
-        }
-
+        public bool Equals(Token other) => other?.OriginalIndex == OriginalIndex;
         public override bool Equals(object obj) => Equals(obj as Token);
-    }
+        public override int GetHashCode() => OriginalIndex.GetHashCode();
 
-    /// <summary>
-    /// Represents a state in the IDA* search.
-    /// Now directly stores the current Grid state.
-    /// </summary>
-    public class GameState : IEquatable<GameState>
-    {
-        public IReadOnlyList<Token> RemainingTokens { get; } // Tokens yet to be placed
-        public BitGrid CurrentGrid { get; } // The actual grid state at this point
-        public GameState ParentState { get; } // Reference to the state from which this one was derived
-        public Token PlacedToken { get; } // The token placed to reach this state
-        public (int X, int Y) PlacementCoords { get; } // The coordinates where PlacedToken was placed
-
-        /// <summary>
-        /// Constructor for the initial puzzle state (no parent, no placed token).
-        /// </summary>
-        /// <param name="remainingTokens">All tokens available at the start.</param>
-        /// <param name="initialGrid">The grid at the very beginning of the puzzle.</param>
-        public GameState(IReadOnlyList<Token> remainingTokens, BitGrid initialGrid)
+        public override string ToString()
         {
-            RemainingTokens = remainingTokens;
-            CurrentGrid = initialGrid;
-            ParentState = null;
-            PlacedToken = null;
-            PlacementCoords = (-1, -1); // Sentinel value
-        }
+            if (!Points.Any()) return "";
 
-        /// <summary>
-        /// Constructor for subsequent states derived from a parent state.
-        /// </summary>
-        /// <param name="remainingTokens">Tokens remaining after `placedToken` was used.</param>
-        /// <param name="currentGrid">The grid state *after* `placedToken` has been placed.</param>
-        /// <param name="parent">The GameState from which this state was reached.</param>
-        /// <param name="placedToken">The token that was placed to create this state.</param>
-        /// <param name="placementCoords">The (X, Y) coordinates of the `placedToken`.</param>
-        public GameState(IReadOnlyList<Token> remainingTokens, BitGrid currentGrid, GameState parent, Token placedToken, (int X, int Y) placementCoords)
-        {
-            RemainingTokens = remainingTokens;
-            CurrentGrid = currentGrid;
-            ParentState = parent;
-            PlacedToken = placedToken;
-            PlacementCoords = placementCoords;
-        }
+            // Find bounding box dimensions
+            int minX = Points.Min(p => p.X);
+            int maxX = Points.Max(p => p.X);
+            int minY = Points.Min(p => p.Y);
+            int maxY = Points.Max(p => p.Y);
 
-        /// <summary>
-        /// Determines if two GameState objects represent the same puzzle state.
-        /// This involves comparing their remaining tokens and their direct grid states.
-        /// </summary>
-        public bool Equals(GameState other)
-        {
-            if (ReferenceEquals(null, other)) return false;
-            if (ReferenceEquals(this, other)) return true;
+            int actualWidth = maxX - minX + 1;
+            int actualHeight = maxY - minY + 1;
 
-            if (RemainingTokens.Count != other.RemainingTokens.Count)
-                return false;
-
-            for (int i = 0; i < RemainingTokens.Count; i++)
+            // Create grid representation
+            byte[,] pieceGrid = new byte[actualHeight, actualWidth];
+            foreach (var point in Points)
             {
-                if (RemainingTokens[i].OriginalIndex != other.RemainingTokens[i].OriginalIndex)
-                {
-                    return false;
-                }
+                pieceGrid[point.Y - minY, point.X - minX] = point.Value;
             }
 
-            return CurrentGrid.Equals(other.CurrentGrid);
-        }
-
-        public override bool Equals(object obj) => Equals(obj as GameState);
-
-        /// <summary>
-        /// Generates a hash code for a GameState object.
-        /// This hash code must be consistent with the Equals method.
-        /// </summary>
-        public override int GetHashCode()
-        {
-            if (CurrentGrid == null) return 0;
-
-            unchecked
+            // Build string representation
+            var sb = new StringBuilder();
+            for (int row = 0; row < actualHeight; row++)
             {
-                int hash = 17;
-                foreach (var token in RemainingTokens)
+                for (int col = 0; col < actualWidth; col++)
                 {
-                    hash = hash * 23 + token.OriginalIndex.GetHashCode();
+                    sb.Append(pieceGrid[row, col]);
                 }
-                hash = hash * 23 + CurrentGrid.GetHashCode();
-                return hash;
+                if (row < actualHeight - 1)
+                    sb.Append(',');
             }
+            return sb.ToString();
         }
     }
-
     /// <summary>
-    /// Implements the IDA* search algorithm to solve the Shapeshifter puzzle.
+    /// Represents a puzzle shape with pre-calculated placement data for the KVHO algorithm.
+    /// This combines aspects of `struct shape1` and `struct shape` from `ss.c`.
     /// </summary>
-    public class Solver
+    public class ProcessedShape
     {
-        private readonly BitGrid initialGrid;
-        private readonly IReadOnlyList<Token> tokens;
-        private readonly CancellationToken cancelToken;
-        private readonly Action<ulong> progressCallback;
-        private ulong expandedNodes = 0;
-        private const int MAX_DEPTH = 20;
+        public Token OriginalToken { get; }
+        public int Index { get; } // Index within the *sorted and processed* list of shapes
+        public int PlacementsX { get; } // Number of possible horizontal top-left placements
+        public int PlacementsY { get; } // Number of possible vertical top-left placements
+        public int TotalPossiblePlacements { get; } // Total (PlacementsX * PlacementsY)
 
-        public Solver(BitGrid initialGrid, IReadOnlyList<Token> tokens,
-            CancellationToken cancelToken = default, Action<ulong> progressCallback = null)
+        // `cache` from ss.c: A list of lists. Outer list for each possible top-left placement (y, x).
+        // Inner list contains the 1D indices (row * boardCols + col) of the board cells affected by this placement.
+        public IReadOnlyList<IReadOnlyList<int>> AffectedBoardCellIndicesCache { get; }
+
+        public ProcessedShape EqualShape { get; set; } // Link to an equivalent shape for pruning
+
+        public ProcessedShape(Token originalToken, int boardRows, int boardCols, int shapeIndex)
         {
-            this.initialGrid = initialGrid;
-            this.tokens = tokens;
-            this.cancelToken = cancelToken;
-            this.progressCallback = progressCallback;
-        }
+            OriginalToken = originalToken;
+            Index = shapeIndex;
 
-        /// <summary>
-        /// Solves the puzzle using the IDA* search algorithm.
-        /// </summary>
-        /// <returns>A dictionary mapping original token indices to their placement (X, Y) coordinates
-        /// if a solution is found; otherwise, returns null.</returns>
-        public Dictionary<int, (int X, int Y)> SolveIDAStar()
-        {
-            cancelToken.ThrowIfCancellationRequested();
+            // Calculate number of possible top-left placement coordinates for this shape
+            PlacementsX = boardCols - originalToken.Width + 1;
+            PlacementsY = boardRows - originalToken.Height + 1;
+            TotalPossiblePlacements = PlacementsX * PlacementsY;
 
-            var startState = new GameState(tokens, initialGrid);
-            double initialThreshold = CalculateHeuristic(startState);
-            Dictionary<int, (int X, int Y)> solution = null;
+            var affectedCellsList = new List<List<int>>();
 
-            // Iterative deepening loop
-            double threshold = initialThreshold;
-            while (solution == null && threshold < double.PositiveInfinity)
+            // Pre-calculate all affected board cell indices for all possible placements
+            for (int r = 0; r < PlacementsY; r++) // Iterate through all possible top-left row placements
             {
-                var seenStates = new Dictionary<GameState, double>();
-                double newThreshold = double.PositiveInfinity;
-                solution = Search(startState, 0, threshold, seenStates, ref newThreshold);
-                threshold = newThreshold; // Update threshold for next iteration
-                seenStates.Clear(); // Clear seen states to reset for next iteration
-            }
-
-            return solution;
-        }
-
-        /// <summary>
-        /// Recursive depth-first search with threshold for IDA*.
-        /// </summary>
-        /// <param name="state">Current game state.</param>
-        /// <param name="gScore">Cost from start to current state.</param>
-        /// <param name="threshold">Current f-score threshold.</param>
-        /// <param name="seenStates">Tracks visited states and their minimum g-scores.</param>
-        /// <param name="newThreshold">Tracks the minimum f-score exceeding the current threshold.</param>
-        /// <returns>Solution if found; otherwise, null.</returns>
-        private Dictionary<int, (int X, int Y)> Search(GameState state, double gScore, double threshold,
-            Dictionary<GameState, double> seenStates, ref double newThreshold)
-        {
-            cancelToken.ThrowIfCancellationRequested();
-
-            double fScore = gScore + CalculateHeuristic(state);
-            if (fScore > threshold)
-            {
-                newThreshold = Math.Min(newThreshold, fScore);
-                return null;
-            }
-
-            UpdateProgress();
-
-            // Check if goal state is reached
-            if (state.CurrentGrid.IsCleared() && state.RemainingTokens.Count == 0)
-            {
-                return ReconstructSolutionPath(state);
-            }
-
-            // Check for cycles or better paths
-            if (seenStates.TryGetValue(state, out double existingGScore) && gScore >= existingGScore)
-            {
-                return null;
-            }
-            seenStates[state] = gScore;
-
-            // If no tokens remain, this is a dead-end
-            if (state.RemainingTokens.Count == 0)
-            {
-                return null;
-            }
-
-            // Select the next token to place
-            var tokenToPlace = state.RemainingTokens[0];
-            var remainingTokens = state.RemainingTokens.Skip(1).ToList().AsReadOnly();
-
-            // Explore all possible placements
-            for (int row = 0; row <= state.CurrentGrid.Rows - tokenToPlace.Height; row++)
-            {
-                for (int col = 0; col <= state.CurrentGrid.Cols - tokenToPlace.Width; col++)
+                for (int c = 0; c < PlacementsX; c++) // Iterate through all possible top-left column placements
                 {
-                    cancelToken.ThrowIfCancellationRequested();
-
-                    var nextGrid = state.CurrentGrid.PlaceToken(tokenToPlace, col, row, 1);
-                    var nextState = new GameState(remainingTokens, nextGrid, state, tokenToPlace, (col, row));
-                    double nextGScore = gScore + 1;
-
-                    var result = Search(nextState, nextGScore, threshold, seenStates, ref newThreshold);
-                    if (result != null)
+                    var currentPlacementAffectedCells = new List<int>();
+                    foreach (var point in originalToken.Points) // For each active cell within the token's shape
                     {
-                        return result;
+                        int absRow = r + point.Y; // Use named property Y instead of Item2
+                        int absCol = c + point.X; // Use named property X instead of Item1
+                                                  // Convert 2D coordinates to a 1D index on the board
+                        currentPlacementAffectedCells.Add(absRow * boardCols + absCol);
                     }
+                    affectedCellsList.Add(currentPlacementAffectedCells);
                 }
             }
-
-            return null;
+            AffectedBoardCellIndicesCache = affectedCellsList.Select(l => (IReadOnlyList<int>)l.AsReadOnly()).ToList().AsReadOnly();
         }
 
         /// <summary>
-        /// Reconstructs the sequence of token placements by backtracking from the `finalState`
-        /// up to the initial state using the `ParentState` links.
+        /// Provides a unique identifier for the shape's configuration (its structure),
+        /// used for grouping identical shapes for optimization (e.g., "0,0,1;1,0,1;").
         /// </summary>
-        /// <param name="finalState">The GameState that represents the solved puzzle.</param>
-        /// <returns>A dictionary mapping original token indices to their placement coordinates.</returns>
-        private Dictionary<int, (int X, int Y)> ReconstructSolutionPath(GameState finalState)
+        public string GetShapeConfigurationKey()
         {
-            var solution = new Dictionary<int, (int X, int Y)>();
-            var pathStack = new Stack<(int OriginalTokenIndex, int X, int Y)>();
-            GameState current = finalState;
-
-            while (current.ParentState != null)
+            // Create a canonical string representation of the shape's points
+            // Ordering by Y then X ensures a consistent key for identical shapes
+            var sb = new StringBuilder();
+            foreach (var point in OriginalToken.Points.OrderBy(p => p.Y).ThenBy(p => p.X)) // Use named properties Y and X
             {
-                pathStack.Push((current.PlacedToken.OriginalIndex, current.PlacementCoords.X, current.PlacementCoords.Y));
-                current = current.ParentState;
+                sb.Append($"{point.X},{point.Y},{point.Value};"); // Use named properties X, Y, Value
             }
-
-            while (pathStack.Count > 0)
-            {
-                var (idx, x, y) = pathStack.Pop();
-                solution[idx] = (x, y);
-            }
-            return solution;
-        }
-
-        /// <summary>
-        /// Calculates the heuristic value for a given GameState.
-        /// The heuristic estimates the cost from the current state to the goal.
-        /// For this puzzle, a simple admissible heuristic is the number of filled tiles.
-        /// </summary>
-        /// <param name="state">The GameState for which to calculate the heuristic.</param>
-        /// <returns>The heuristic value.</returns>
-        private double CalculateHeuristic(GameState state)
-        {
-            return state.CurrentGrid.CountFilledTiles();
-        }
-
-        /// <summary>
-        /// Increments the count of search nodes and invokes the progress callback
-        /// periodically to update the UI.
-        /// </summary>
-        private void UpdateProgress()
-        {
-            expandedNodes++;
-            if (expandedNodes % 10000 == 0)
-                progressCallback?.Invoke(expandedNodes);
+            return sb.ToString();
         }
     }
 
-    public class RoundedLabel : System.Windows.Forms.Label
+    /// <summary>
+    /// A custom label control with rounded corners and smooth rendering.
+    /// </summary>
+    public class RoundedLabel : Label
     {
-        public int CornerRadius { get; set; } = 10;
+        private int _cornerRadius = 10;
+        private Region _currentRegion;
+
+        /// <summary>
+        /// Gets or sets the corner radius for the rounded label.
+        /// </summary>
+        public int CornerRadius
+        {
+            get => _cornerRadius;
+            set
+            {
+                if (_cornerRadius != value && value >= 0)
+                {
+                    _cornerRadius = value;
+                    UpdateRegion();
+                    Invalidate();
+                }
+            }
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            UpdateRegion();
+        }
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            // Don't call base.OnPaintBackground to avoid flickering
-            // Instead, paint the rounded background yourself
-
-            using (GraphicsPath path = new GraphicsPath())
+            using (var path = CreateRoundedPath())
             {
-                Rectangle bounds = this.ClientRectangle;
-                int r = CornerRadius;
-
-                path.AddArc(bounds.X, bounds.Y, r, r, 180, 90);
-                path.AddArc(bounds.Right - r, bounds.Y, r, r, 270, 90);
-                path.AddArc(bounds.Right - r, bounds.Bottom - r, r, r, 0, 90);
-                path.AddArc(bounds.X, bounds.Bottom - r, r, r, 90, 90);
-                path.CloseFigure();
-
-                this.Region = new Region(path);
-
+                // Configure graphics for smooth rendering
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (SolidBrush brush = new SolidBrush(this.BackColor))
+                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                // Fill the background
+                using (var brush = new SolidBrush(BackColor))
                 {
                     e.Graphics.FillPath(brush, path);
                 }
+
+                // Draw the text
+                DrawCenteredText(e.Graphics);
+            }
+        }
+
+        private GraphicsPath CreateRoundedPath()
+        {
+            var path = new GraphicsPath();
+            var bounds = new Rectangle(0, 0, Width, Height);
+            var diameter = _cornerRadius * 2;
+
+            if (_cornerRadius > 0)
+            {
+                // Create rounded rectangle
+                path.AddArc(bounds.X, bounds.Y, diameter, diameter, 180, 90);
+                path.AddArc(bounds.Right - diameter, bounds.Y, diameter, diameter, 270, 90);
+                path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+                path.AddArc(bounds.X, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+                path.CloseFigure();
+            }
+            else
+            {
+                // Regular rectangle
+                path.AddRectangle(bounds);
             }
 
-            // Draw the text centered
+            return path;
+        }
+
+        private void DrawCenteredText(Graphics graphics)
+        {
+            const TextFormatFlags flags = TextFormatFlags.HorizontalCenter |
+                                        TextFormatFlags.VerticalCenter |
+                                        TextFormatFlags.EndEllipsis;
+
+            TextRenderer.DrawText(graphics, Text, Font, ClientRectangle, ForeColor, flags);
+        }
+
+        private void UpdateRegion()
+        {
+            _currentRegion?.Dispose();
+            using (var path = CreateRoundedPath())
+            {
+                _currentRegion = new Region(path);
+                Region = _currentRegion;
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _currentRegion?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+    }
+
+    /// <summary>
+    /// Custom checkbox with just the text, no checkbox.
+    /// </summary>
+    public class TextOnlyCheckBox : CheckBox
+    {
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            // Skip painting the checkbox itself
             TextRenderer.DrawText(
                 e.Graphics,
                 this.Text,
                 this.Font,
                 this.ClientRectangle,
                 this.ForeColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter
+            );
         }
     }
+
+    /// <summary>
+    /// A FlowLayoutPanel with enhanced double buffering to eliminate flicker during updates.
+    /// Automatically applies optimized rendering styles for smooth visual performance.
+    /// </summary>
     public class DoubleBufferedFlowLayoutPanel : FlowLayoutPanel
     {
+        private const int WS_EX_COMPOSITED = 0x02000000;
+
         public DoubleBufferedFlowLayoutPanel()
         {
-            this.DoubleBuffered = true;
-            this.SetStyle(ControlStyles.AllPaintingInWmPaint |
-                          ControlStyles.UserPaint |
-                          ControlStyles.OptimizedDoubleBuffer, true);
-            this.UpdateStyles();
+            InitializeDoubleBuffering();
         }
 
+        /// <summary>
+        /// Configures the control for optimal double buffering performance.
+        /// </summary>
+        private void InitializeDoubleBuffering()
+        {
+            DoubleBuffered = true;
+
+            SetStyle(ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.UserPaint |
+                     ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.ResizeRedraw, true);
+
+            UpdateStyles();
+        }
+
+        /// <summary>
+        /// Applies Windows Forms Compositing for additional flicker reduction.
+        /// </summary>
         protected override CreateParams CreateParams
         {
             get
             {
-                var cp = base.CreateParams;
-                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
-                return cp;
+                var createParams = base.CreateParams;
+                createParams.ExStyle |= WS_EX_COMPOSITED;
+                return createParams;
             }
         }
     }

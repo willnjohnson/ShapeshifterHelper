@@ -1,4 +1,5 @@
-﻿/*
+﻿// Version 2.0.1
+/*
  * ShapeshifterKvho.cs
  *
  * Port of Kvho's original Shapeshifter solver from C to C#.

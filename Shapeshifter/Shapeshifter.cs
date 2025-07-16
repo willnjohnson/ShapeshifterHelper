@@ -1,4 +1,5 @@
-﻿using System;
+﻿// Version 2.0.1
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -12,6 +13,7 @@ using System.Windows.Forms;
 using WinFormsLabel = System.Windows.Forms.Label;
 using HtmlAgilityPack;
 using ShapeshifterKvho;
+using ShapeshifterDllWrapper;
 using System.Diagnostics;
 
 namespace Shapeshifter
@@ -224,7 +226,7 @@ namespace Shapeshifter
         /// </summary>
         private void ShowParseError(string message)
         {
-            MessageBox.Show(message, "Parsing Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            AddStatusLabel($"Error: {message}", Color.Red);
             initialBoardState = null;
         }
 
@@ -322,7 +324,8 @@ namespace Shapeshifter
                 };
                 timer.Start();
 
-                solverResult = await Task.Run(() => ShapeshifterKvho.Solver.Solve(dat), cancelSource.Token);
+                // Run low-level version (DLL)
+                solverResult = await Task.Run(() => ShapeshifterDllWrapper.ShapeshifterDllWrapper.Solve(dat), cancelSource.Token);
                 timer.Stop();
             }
             catch (OperationCanceledException)
@@ -333,9 +336,40 @@ namespace Shapeshifter
             {
                 if (!string.IsNullOrEmpty(dat) && initialBoardState != null)
                 {
-                    MessageBox.Show($"Solver error: {ex.Message}\n\nStackTrace:\n{ex.StackTrace}",
-                        "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    AddStatusLabel($"Solver error: {ex.Message}", Color.Red);
+                    // No DLL found. Default to C# version (a bit slower, especially on higher levels).
+                    try
+                    {
+                        AddStatusLabel("Missing DLL. Defaulting to C# algorithm (may be slower)...", Color.Cyan);
+
+                        var timer = new System.Windows.Forms.Timer { Interval = 250 };
+                        timer.Tick += (s, args) =>
+                        {
+                            var elapsed = DateTime.Now - startTime;
+                            labelWaiting.Text = $"Calculating... [{elapsed.TotalSeconds:F1}s]";
+                        };
+                        timer.Start();
+
+                        // Couldn't find DLL. Run default version (C#)
+                        solverResult = await Task.Run(() => ShapeshifterKvho.Solver.Solve(dat), cancelSource.Token);
+                        timer.Stop();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        AddStatusLabel("Operation cancelled.", Color.DarkOrange);
+                    }
+                    catch (Exception ex2)
+                    {
+                        if (!string.IsNullOrEmpty(dat) && initialBoardState != null)
+                        {
+                            AddStatusLabel($"Error: {ex2.Message}\n\nStackTrace:\n{ex.StackTrace}", Color.Red);
+                        }
+                    }
+                    finally
+                    {
+                        cancelSource?.Dispose();
+                        cancelSource = null;
+                        SetUIState(false);
+                    }
                 }
             }
             finally

@@ -2,9 +2,10 @@
 
 This C# application helps you solve the Neopets Shapeshifter puzzle by utilizing a highly optimized search algorithm to find the optimal sequence of token puzzle piece placements.
 
+A DLL is included for native C performance (and must be included in the same directory as your `.exe`).
+
 ## App Preview
 <img width="884" height="707" alt="image" src="https://github.com/user-attachments/assets/371d8f4f-1c1d-461b-a082-8f8b6c5fab4d" />
-
 
 ## Puzzle Data
 * **Grid Layout:** The main puzzle grid ($M \times N$ board).
@@ -28,13 +29,14 @@ The compiled `.exe` can be found under the **[Releases](https://github.com/willn
 
 ## Usage
 
-1.  **Download the latest `.exe`**.
+1.  **Copy both `Shapeshifter_Helper.exe` and `ShapeshifterKvho.dll` into the SAME directory.**.
 2.  **Run the `Shapeshifter_Helper.exe` application.**
 3.  **Paste the relevant HTML source** of the Neopets Shapeshifter puzzle into the input text box.
 4.  **Click the "Start" button** to begin the solving process.
 5.  **Click "Stop"** to cancel an ongoing search (recommended if progress is slowing down).
 
-`Tip: If you cannot find a solution, lose the game on purpose to generate a new puzzle, and try again.`
+* Note: DLL runs a C native version of the algorithm for quicker results. Without the DLL, the algorithm will run under its own environment.
+* `Tip: If you cannot find a solution, lose the game on purpose to generate a new puzzle, and try again.`
 
 ## Output
 

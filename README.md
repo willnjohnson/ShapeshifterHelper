@@ -2,6 +2,10 @@
 
 This C# application helps you solve the Neopets Shapeshifter puzzle by utilizing a highly optimized search algorithm to find the optimal sequence of token puzzle piece placements.
 
+## App Preview
+<img width="884" height="707" alt="image" src="https://github.com/user-attachments/assets/371d8f4f-1c1d-461b-a082-8f8b6c5fab4d" />
+
+
 ## Puzzle Data
 * **Grid Layout:** The main puzzle grid ($M \times N$ board).
 * **Token Layouts:** Some $K$ number of puzzle pieces.

@@ -26,9 +26,13 @@
 
 # Shapeshifter Helper
 
-This C# application helps you solve the Neopets Shapeshifter puzzle by utilizing a highly optimized search algorithm to find the optimal sequence of token puzzle piece placements.
+This C# application helps you solve the Neopets Shapeshifter puzzle by utilizing a highly optimized search algorithm to find the optimal sequence of token puzzle piece placements. A DLL is included for native C performance (and must be included in the same directory as your `.exe`).
 
-A DLL is included for native C performance (and must be included in the same directory as your `.exe`).
+The compiled `.exe` and `.dll` can be found under the **[Releases](https://github.com/willnjohnson/ShapeshifterHelper/releases)** section of this GitHub repository.
+
+You can add this **[GreaseMonkey script](https://raw.githubusercontent.com/willnjohnson/ShapeshifterHelper/refs/heads/master/ShapeshifterHelperWebVisualizer.js)** to your GreaseMonkey/TamperMonkey extension in your browser for easier convenience:
+* "Copy HTML" button
+* Symbols replaced with background and number (like you see in the C# application)
 
 ## Trouble Downloading?
 
@@ -46,10 +50,6 @@ If you're feeling skeptical, you can run the .EXE without the .DLL. Just be awar
 ## Puzzle Data
 * **Grid Layout:** The main puzzle grid ($M \times N$ board).
 * **Token Layouts:** Some $K$ number of puzzle pieces.
-
-## Where to Find the Executable
-
-The compiled `.exe` can be found under the **[Releases](https://github.com/willnjohnson/ShapeshifterHelper_IDA-Star/releases)** section of this GitHub repository.
 
 ## Features
 

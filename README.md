@@ -143,7 +143,7 @@ In essence, while IDA\* is a robust and generally effective algorithm, this C# p
 * **Iterative deepening A\*:** [https://en.wikipedia.org/wiki/Iterative_deepening_A*](https://en.wikipedia.org/wiki/Iterative_deepening_A*)
 * **She Who Shapes:** [https://shewhoshapes.wordpress.com/](https://shewhoshapes.wordpress.com/)
 
---
+---
 
 ## Contributions
 

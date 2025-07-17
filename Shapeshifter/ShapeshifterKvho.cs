@@ -1,12 +1,13 @@
-﻿// Version 2.0.1
-/*
+﻿/*
  * ShapeshifterKvho.cs
  *
  * Port of Kvho's original Shapeshifter solver from C to C#.
  * This version preserves the core backtracking algorithm while rewriting
  * it for performance, readability, and integration in a modern C# environment.
  *
- * Based on Kvho's original C implementation (GPL v2).
+ * Based on the original solver by Kvho (GPL v2) -- see link to the preserved version:
+ *     https://github.com/jimrustle/neopets-shapeshifter/blob/1c31a419971de3f25cac9a5dfc4fa32ca4aa7605/kvho_ss/ss.c
+ *     
  * Interesting blog read: https://shewhoshapes.wordpress.com/
  *
  * === Design Choices in this C# version ===
@@ -27,6 +28,30 @@
  *
  * Overall, this is a robust, safe, and maintainable port of Kvho's algorithm,
  * prioritizing direct translation of working logic while adding C# niceties.
+ * ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⡈⢯⡉⠓⠦⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ____ _     ____  ____  _____ ____  _     _  _____ _____  _____ ____
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⠻⣉⠹⠷⠀⠀⠀⠙⢷⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀/ ___\/ \ /|/  _ \/  __\/  __// ___\/ \ /|/ \/    //__ __\/  __//  __\
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠞⠀⠀⠀⠀⠀⠀⠀⢿⡇⠀⠀⠀⠀⠀⠀⠀⠀|    \| |_||| / \||  \/||  \  |    \| |_||| ||  __\  / \  |  \  |  \/|
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⢈⡇⠀⠀⠀⠀⠀⠀⠀⠀\___ || | ||| |-|||  __/|  /_ \___ || | ||| || |     | |  |  /_ |    /
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠹⠝⠀⠀⠀⠀⠀⣼⠃⠀⠀⠀⠀⠀⠀⠀⠀\____/\_/ \|\_/ \|\_/   \____\\____/\_/ \|\_/\_/     \_/  \____\\_/\_\
+⠀*⠀⠀⠀⠀⠀⠀⠀⣠⠞⠀⣀⣠⣤⣤⠄⠀⠀⢠⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀*⠀⠀⠀⠀⠀⠀⠚⠢⠼⠿⠟⢛⣾⠃⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀ _     _____ _     ____  _____ ____
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡴⣻⠃⠀⠀⠀⠀⢸⡉⠀⠀⠀⠀⠀⠀⠀⠀⠀/ \ /|/  __// \   /  __\/  __//  __\
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⣰⢻⡷⠁⠀⠀⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀| |_|||  \  | |   |  \/||  \  |  \/|
+⠀*⠀⠀⠀⠀⠀⠀⠀⢰⢽⡟⠁⠀⠀⠀⠀⠀⠀⠀⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀| | |||  /_ | |_/\|  __/|  /_ |    /
+⠀*⠀⠀⠀⠀⠀⠀⠀⢾⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡆⠀⠀⠀⠀⠀⠀⠀⠀\_/ \|\____\\____/\_/   \____\\_/\_\
+⠀*⠀⠀⠀⠀⠀⠀⠀⢸⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡀⠀⠀⠀⠀⠀⠀⠀
+⠀*⠀⠀⠀⠀⠀⠀⠀⠘⢧⣳⡀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣷⠀⠀⠀⠀⠀⠀⠀      Version 2.0.2
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠈⣷⣱⡀⠀⠀⠀⠀⣸⠀⠀⠀⠈⢻⣦⠀⠀⠀⠀⠀     
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣷⡙⣆⠀⠀⣾⠃⠀⠀⠀⠀⠈⢽⡆⠀⠀⠀⠀      CSharp Application by @willnjohnson
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⡇⢷⡏⠃⢠⠇⠀⠀⣀⠄⠀⠀⠀⣿⡖⠀⠀⠀      
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡇⢨⠇⠀⡼⢀⠔⠊⠀⠀⠀⠀⠀⠘⣯⣄⢀⠀      Algorithm by Kvho (C code rewritten and modified into C#)
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⡇⣼⡀⣰⣷⠁⠀⠀⠀⠀⠀⠀⠀⠀⣇⢻⣧⡄      
+⠀*⠀⠀⠀⠀⠀⠀⣀⣮⣿⣿⣿⣯⡭⢉⠟⠛⠳⢤⣄⣀⣀⣀⣀⡴⢠⠨⢻⣿      File: Shapeshifter.Designer.cs
+⠀*⠀   ⢀⣾⣿⣿⣿⣿⢏⠓⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢨⣿      
+⠀*   ⣰⣿⣿⣿⣿⣿⣿⡱⠌⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢭⣾⠏      Description: Ported version of Kvho's original algorithm.
+ *  ⣰⡿⠟⠋⠛⢿⣿⣿⣊⠡⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣼⡿⠋⠀
+ * ⠋⠁⠀⠀⠀⠀⠈⠑⠿⢶⣄⣀⣀⣀⣀⣀⣄⣤⡶⠿⠟⠋⠁⠀⠀⠀
  */
 
 using System;

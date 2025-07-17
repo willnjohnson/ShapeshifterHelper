@@ -1,4 +1,28 @@
-﻿// Version 2.0.1
+﻿/* ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⡈⢯⡉⠓⠦⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ____ _     ____  ____  _____ ____  _     _  _____ _____  _____ ____
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⠻⣉⠹⠷⠀⠀⠀⠙⢷⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀/ ___\/ \ /|/  _ \/  __\/  __// ___\/ \ /|/ \/    //__ __\/  __//  __\
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠞⠀⠀⠀⠀⠀⠀⠀⢿⡇⠀⠀⠀⠀⠀⠀⠀⠀|    \| |_||| / \||  \/||  \  |    \| |_||| ||  __\  / \  |  \  |  \/|
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⢈⡇⠀⠀⠀⠀⠀⠀⠀⠀\___ || | ||| |-|||  __/|  /_ \___ || | ||| || |     | |  |  /_ |    /
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠹⠝⠀⠀⠀⠀⠀⣼⠃⠀⠀⠀⠀⠀⠀⠀⠀\____/\_/ \|\_/ \|\_/   \____\\____/\_/ \|\_/\_/     \_/  \____\\_/\_\
+⠀*⠀⠀⠀⠀⠀⠀⠀⣠⠞⠀⣀⣠⣤⣤⠄⠀⠀⢠⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀*⠀⠀⠀⠀⠀⠀⠚⠢⠼⠿⠟⢛⣾⠃⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀ _     _____ _     ____  _____ ____
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡴⣻⠃⠀⠀⠀⠀⢸⡉⠀⠀⠀⠀⠀⠀⠀⠀⠀/ \ /|/  __// \   /  __\/  __//  __\
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⣰⢻⡷⠁⠀⠀⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀| |_|||  \  | |   |  \/||  \  |  \/|
+⠀*⠀⠀⠀⠀⠀⠀⠀⢰⢽⡟⠁⠀⠀⠀⠀⠀⠀⠀⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀| | |||  /_ | |_/\|  __/|  /_ |    /
+⠀*⠀⠀⠀⠀⠀⠀⠀⢾⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡆⠀⠀⠀⠀⠀⠀⠀⠀\_/ \|\____\\____/\_/   \____\\_/\_\
+⠀*⠀⠀⠀⠀⠀⠀⠀⢸⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡀⠀⠀⠀⠀⠀⠀⠀
+⠀*⠀⠀⠀⠀⠀⠀⠀⠘⢧⣳⡀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣷⠀⠀⠀⠀⠀⠀⠀      Version 2.0.2
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠈⣷⣱⡀⠀⠀⠀⠀⣸⠀⠀⠀⠈⢻⣦⠀⠀⠀⠀⠀     
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣷⡙⣆⠀⠀⣾⠃⠀⠀⠀⠀⠈⢽⡆⠀⠀⠀⠀      CSharp Application by @willnjohnson
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⡇⢷⡏⠃⢠⠇⠀⠀⣀⠄⠀⠀⠀⣿⡖⠀⠀⠀      
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡇⢨⠇⠀⡼⢀⠔⠊⠀⠀⠀⠀⠀⠘⣯⣄⢀⠀      Algorithm by Kvho
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⡇⣼⡀⣰⣷⠁⠀⠀⠀⠀⠀⠀⠀⠀⣇⢻⣧⡄      
+⠀*⠀⠀⠀⠀⠀⠀⣀⣮⣿⣿⣿⣯⡭⢉⠟⠛⠳⢤⣄⣀⣀⣀⣀⡴⢠⠨⢻⣿      File: Shapeshifter.Designer.cs
+⠀*⠀   ⢀⣾⣿⣿⣿⣿⢏⠓⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢨⣿      
+⠀*   ⣰⣿⣿⣿⣿⣿⣿⡱⠌⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢭⣾⠏      Description: Auto-generated code for components.
+ *  ⣰⡿⠟⠋⠛⢿⣿⣿⣊⠡⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣼⡿⠋⠀
+ * ⠋⠁⠀⠀⠀⠀⠈⠑⠿⢶⣄⣀⣀⣀⣀⣀⣄⣤⡶⠿⠟⠋⠁⠀⠀⠀
+ */
 namespace Shapeshifter
 {
     partial class ShapeShifter
@@ -38,6 +62,8 @@ namespace Shapeshifter
             this.labelWaiting = new Shapeshifter.RoundedLabel();
             this.labelResult = new Shapeshifter.RoundedLabel();
             this.labelPaste = new Shapeshifter.RoundedLabel();
+            this.labelHasDLL = new Shapeshifter.RoundedLabel();
+            this.labelVersion = new Shapeshifter.RoundedLabel();
             ((System.ComponentModel.ISupportInitialize)(this.pboxTitle)).BeginInit();
             this.SuspendLayout();
             // 
@@ -137,6 +163,7 @@ namespace Shapeshifter
             this.labelResult.TabIndex = 10;
             this.labelResult.Text = "Result:";
             this.labelResult.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.labelResult.Click += new System.EventHandler(this.labelResult_Click_1);
             // 
             // labelPaste
             // 
@@ -152,6 +179,36 @@ namespace Shapeshifter
             this.labelPaste.Text = "Paste ShapeShifter HTML code:";
             this.labelPaste.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
+            // labelHasDLL
+            // 
+            this.labelHasDLL.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelHasDLL.AutoSize = true;
+            this.labelHasDLL.BackColor = System.Drawing.Color.Transparent;
+            this.labelHasDLL.CornerRadius = 4;
+            this.labelHasDLL.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
+            this.labelHasDLL.ForeColor = System.Drawing.Color.Red;
+            this.labelHasDLL.Location = new System.Drawing.Point(790, 407);
+            this.labelHasDLL.Name = "labelHasDLL";
+            this.labelHasDLL.Size = new System.Drawing.Size(77, 13);
+            this.labelHasDLL.TabIndex = 16;
+            this.labelHasDLL.Text = "No DLL Found";
+            this.labelHasDLL.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            // 
+            // labelVersion
+            // 
+            this.labelVersion.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelVersion.AutoSize = true;
+            this.labelVersion.BackColor = System.Drawing.Color.Transparent;
+            this.labelVersion.CornerRadius = 10;
+            this.labelVersion.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
+            this.labelVersion.ForeColor = System.Drawing.Color.BlanchedAlmond;
+            this.labelVersion.Location = new System.Drawing.Point(765, 11);
+            this.labelVersion.Name = "labelVersion";
+            this.labelVersion.Size = new System.Drawing.Size(102, 20);
+            this.labelVersion.TabIndex = 17;
+            this.labelVersion.Text = "Version 2.0.2";
+            this.labelVersion.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            // 
             // ShapeShifter
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -160,6 +217,8 @@ namespace Shapeshifter
             this.BackColor = System.Drawing.Color.Black;
             this.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("$this.BackgroundImage")));
             this.ClientSize = new System.Drawing.Size(884, 681);
+            this.Controls.Add(this.labelVersion);
+            this.Controls.Add(this.labelHasDLL);
             this.Controls.Add(this.tableSolution);
             this.Controls.Add(this.pboxTitle);
             this.Controls.Add(this.textBoxStepsPanel);
@@ -188,6 +247,8 @@ namespace Shapeshifter
         private DoubleBufferedFlowLayoutPanel textBoxStepsPanel;
         private System.Windows.Forms.PictureBox pboxTitle;
         private System.Windows.Forms.TableLayoutPanel tableSolution;
+        private RoundedLabel labelHasDLL;
+        private RoundedLabel labelVersion;
     }
 }
 

@@ -1,8 +1,44 @@
+```   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⡈⢯⡉⠓⠦⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ____ _     ____  ____  _____ ____  _     _  _____ _____  _____ ____
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠻⣉⠹⠷⠀⠀⠀⠙⢷⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀/ ___\/ \ /|/  _ \/  __\/  __// ___\/ \ /|/ \/    //__ __\/  __//  __\
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠞⠀⠀⠀⠀⠀⠀⠀⢿⡇⠀⠀⠀⠀⠀⠀⠀⠀|    \| |_||| / \||  \/||  \  |    \| |_||| ||  __\  / \  |  \  |  \/|
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⢈⡇⠀⠀⠀⠀⠀⠀⠀⠀\___ || | ||| |-|||  __/|  /_ \___ || | ||| || |     | |  |  /_ |    /
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠹⠝⠀⠀⠀⠀⠀⣼⠃⠀⠀⠀⠀⠀⠀⠀⠀\____/\_/ \|\_/ \|\_/   \____\\____/\_/ \|\_/\_/     \_/  \____\\_/\_\
+⠀ ⠀⠀⠀⠀⠀⠀⠀⣠⠞⠀⣀⣠⣤⣤⠄⠀⠀⢠⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀ ⠀⠀⠀⠀⠀⠀⠚⠢⠼⠿⠟⢛⣾⠃⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀ _     _____ _     ____  _____ ____
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡴⣻⠃⠀⠀⠀⠀⢸⡉⠀⠀⠀⠀⠀⠀⠀⠀⠀/ \ /|/  __// \   /  __\/  __//  __\
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⣰⢻⡷⠁⠀⠀⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀| |_|||  \  | |   |  \/||  \  |  \/|
+⠀ ⠀⠀⠀⠀⠀⠀⠀⢰⢽⡟⠁⠀⠀⠀⠀⠀⠀⠀⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀| | |||  /_ | |_/\|  __/|  /_ |    /
+⠀ ⠀⠀⠀⠀⠀⠀⠀⢾⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡆⠀⠀⠀⠀⠀⠀⠀⠀\_/ \|\____\\____/\_/   \____\\_/\_\
+⠀ ⠀⠀⠀⠀⠀⠀⠀⢸⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡀⠀⠀⠀⠀⠀⠀⠀
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠘⢧⣳⡀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣷⠀⠀⠀⠀⠀⠀⠀      Version 2.0.2
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠈⣷⣱⡀⠀⠀⠀⠀⣸⠀⠀⠀⠈⢻⣦⠀⠀⠀⠀⠀     
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣷⡙⣆⠀⠀⣾⠃⠀⠀⠀⠀⠈⢽⡆⠀⠀⠀⠀      CSharp Application by @willnjohnson
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⡇⢷⡏⠃⢠⠇⠀⠀⣀⠄⠀⠀⠀⣿⡖⠀⠀⠀      
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡇⢨⠇⠀⡼⢀⠔⠊⠀⠀⠀⠀⠀⠘⣯⣄⢀⠀      Algorithm by Kvho
+⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⡇⣼⡀⣰⣷⠁⠀⠀⠀⠀⠀⠀⠀⠀⣇⢻⣧⡄      
+⠀ ⠀⠀⠀⠀⠀⠀⣀⣮⣿⣿⣿⣯⡭⢉⠟⠛⠳⢤⣄⣀⣀⣀⣀⡴⢠⠨⢻⣿      
+⠀ ⠀   ⢀⣾⣿⣿⣿⣿⢏⠓⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢨⣿      
+⠀    ⣰⣿⣿⣿⣿⣿⣿⡱⠌⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢭⣾⠏      
+    ⣰⡿⠟⠋⠛⢿⣿⣿⣊⠡⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣼⡿⠋⠀
+   ⠋⠁⠀⠀⠀⠀⠈⠑⠿⢶⣄⣀⣀⣀⣀⣀⣄⣤⡶⠿⠟⠋⠁⠀⠀⠀
+```
+
 # Shapeshifter Helper
 
 This C# application helps you solve the Neopets Shapeshifter puzzle by utilizing a highly optimized search algorithm to find the optimal sequence of token puzzle piece placements.
 
 A DLL is included for native C performance (and must be included in the same directory as your `.exe`).
+
+## Trouble Downloading?
+
+The executable (.EXE) and Dynamic Link Library (.DLL) files for Release 2.0.1 and above may be flagged by your operating system's built-in security features (like Windows Defender or SmartScreen).
+
+Rest assured, this is a known false positive. The program includes dynamically loading a native C DLL (i.e. a DLL of Kvho's Shapeshifter algorithm), which some security software can mistakenly interpret as suspicious behavior (such as "DLL injection" or "code modification" techniques that malware also employs). The files are safe and do not contain any malicious code.
+
+You may need to temporarily disable Windows Defender, go to "Add or remove exclusions" to whitelist the executable and DLL, then re-enable Windows Defender.
+
+If you're feeling skeptical, you can run the .EXE without the .DLL. Just be aware the solver may run slower if you do that.
 
 ## App Preview
 <img width="884" height="707" alt="image" src="https://github.com/user-attachments/assets/371d8f4f-1c1d-461b-a082-8f8b6c5fab4d" />

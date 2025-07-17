@@ -1,4 +1,29 @@
-﻿// Version 2.0.1
+﻿/* ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⡈⢯⡉⠓⠦⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ____ _     ____  ____  _____ ____  _     _  _____ _____  _____ ____
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⠻⣉⠹⠷⠀⠀⠀⠙⢷⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀/ ___\/ \ /|/  _ \/  __\/  __// ___\/ \ /|/ \/    //__ __\/  __//  __\
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠞⠀⠀⠀⠀⠀⠀⠀⢿⡇⠀⠀⠀⠀⠀⠀⠀⠀|    \| |_||| / \||  \/||  \  |    \| |_||| ||  __\  / \  |  \  |  \/|
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⢈⡇⠀⠀⠀⠀⠀⠀⠀⠀\___ || | ||| |-|||  __/|  /_ \___ || | ||| || |     | |  |  /_ |    /
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠹⠝⠀⠀⠀⠀⠀⣼⠃⠀⠀⠀⠀⠀⠀⠀⠀\____/\_/ \|\_/ \|\_/   \____\\____/\_/ \|\_/\_/     \_/  \____\\_/\_\
+⠀*⠀⠀⠀⠀⠀⠀⠀⣠⠞⠀⣀⣠⣤⣤⠄⠀⠀⢠⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀*⠀⠀⠀⠀⠀⠀⠚⠢⠼⠿⠟⢛⣾⠃⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀ _     _____ _     ____  _____ ____
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡴⣻⠃⠀⠀⠀⠀⢸⡉⠀⠀⠀⠀⠀⠀⠀⠀⠀/ \ /|/  __// \   /  __\/  __//  __\
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⣰⢻⡷⠁⠀⠀⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀| |_|||  \  | |   |  \/||  \  |  \/|
+⠀*⠀⠀⠀⠀⠀⠀⠀⢰⢽⡟⠁⠀⠀⠀⠀⠀⠀⠀⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀| | |||  /_ | |_/\|  __/|  /_ |    /
+⠀*⠀⠀⠀⠀⠀⠀⠀⢾⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡆⠀⠀⠀⠀⠀⠀⠀⠀\_/ \|\____\\____/\_/   \____\\_/\_\
+⠀*⠀⠀⠀⠀⠀⠀⠀⢸⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡀⠀⠀⠀⠀⠀⠀⠀
+⠀*⠀⠀⠀⠀⠀⠀⠀⠘⢧⣳⡀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣷⠀⠀⠀⠀⠀⠀⠀      Version 2.0.2
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠈⣷⣱⡀⠀⠀⠀⠀⣸⠀⠀⠀⠈⢻⣦⠀⠀⠀⠀⠀     
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣷⡙⣆⠀⠀⣾⠃⠀⠀⠀⠀⠈⢽⡆⠀⠀⠀⠀      CSharp Application by @willnjohnson
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⡇⢷⡏⠃⢠⠇⠀⠀⣀⠄⠀⠀⠀⣿⡖⠀⠀⠀      
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡇⢨⠇⠀⡼⢀⠔⠊⠀⠀⠀⠀⠀⠘⣯⣄⢀⠀      Algorithm by Kvho
+⠀*⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⡇⣼⡀⣰⣷⠁⠀⠀⠀⠀⠀⠀⠀⠀⣇⢻⣧⡄      
+⠀*⠀⠀⠀⠀⠀⠀⣀⣮⣿⣿⣿⣯⡭⢉⠟⠛⠳⢤⣄⣀⣀⣀⣀⡴⢠⠨⢻⣿      File: Shapeshifter.cs
+⠀*⠀   ⢀⣾⣿⣿⣿⣿⢏⠓⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢨⣿      
+⠀*   ⣰⣿⣿⣿⣿⣿⣿⡱⠌⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⢭⣾⠏      Description: Logic for GUI interaction, HTML extraction, and running the solver. 
+ *  ⣰⡿⠟⠋⠛⢿⣿⣿⣊⠡⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣼⡿⠋⠀
+ * ⠋⠁⠀⠀⠀⠀⠈⠑⠿⢶⣄⣀⣀⣀⣀⣀⣄⣤⡶⠿⠟⠋⠁⠀⠀⠀
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -20,11 +45,11 @@ namespace Shapeshifter
 {
     public partial class ShapeShifter : Form
     {
-        private CancellationTokenSource cancelSource = null;
         private byte[,] initialBoardState = null;
         private int puzzleRank = 0;
         private Label[,] boardCells;
         private List<SolutionStep> _allSolutionSteps = new List<SolutionStep>();
+        private CancellationTokenSource cancelSource;
 
         public ShapeShifter() => InitializeComponent();
 
@@ -40,6 +65,15 @@ namespace Shapeshifter
             labelResult.Padding = new Padding(3);
             labelWaiting.BackColor = semiTransparent;
             labelWaiting.Padding = new Padding(2);
+            labelVersion.BackColor = semiTransparent;
+            labelVersion.Padding = new Padding(2);
+            labelHasDLL.BackColor = semiTransparent;
+            labelHasDLL.Padding = new Padding(2);
+
+            if (File.Exists("ShapeshifterKvho.dll"))
+            {
+                labelHasDLL.Visible = false;
+            }
 
             InitializeBoardUI();
         }
@@ -288,6 +322,9 @@ namespace Shapeshifter
         /// <summary>
         /// Handles puzzle solving - starts solver or cancels if running
         /// </summary>
+        /// <summary>
+        /// Handles puzzle solving - starts solver or cancels if running
+        /// </summary>
         private async void startStopButton_Click(object sender, EventArgs e)
         {
             if (cancelSource != null)
@@ -314,19 +351,35 @@ namespace Shapeshifter
 
             var startTime = DateTime.Now;
             string solverResult = null;
+            System.Windows.Forms.Timer timer = null;
 
             try
             {
-                var timer = new System.Windows.Forms.Timer { Interval = 250 };
-                timer.Tick += (s, args) => {
+                timer = new System.Windows.Forms.Timer { Interval = 25 };
+                timer.Tick += (s, args) =>
+                {
                     var elapsed = DateTime.Now - startTime;
-                    labelWaiting.Text = $"Calculating... [{elapsed.TotalSeconds:F1}s]";
+                    labelWaiting.Text = $"Calculating... [{elapsed.TotalSeconds:F3}s]";
                 };
                 timer.Start();
 
-                // Run low-level version (DLL)
-                solverResult = await Task.Run(() => ShapeshifterDllWrapper.ShapeshifterDllWrapper.Solve(dat), cancelSource.Token);
-                timer.Stop();
+                try
+                {
+                    // Try DLL version
+                    solverResult = await Task.Run(() =>
+                        ShapeshifterDllWrapper.ShapeshifterDllWrapper.Solve(dat), cancelSource.Token);
+                }
+                catch (Exception exDll)
+                {
+                    if (cancelSource.Token.IsCancellationRequested)
+                        throw new OperationCanceledException();
+
+                    AddStatusLabel("Missing DLL. Defaulting to C# algorithm (may be slower)...", Color.Cyan);
+
+                    // Fallback to C# version
+                    solverResult = await Task.Run(() =>
+                        ShapeshifterKvho.Solver.Solve(dat), cancelSource.Token);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -334,46 +387,13 @@ namespace Shapeshifter
             }
             catch (Exception ex)
             {
-                if (!string.IsNullOrEmpty(dat) && initialBoardState != null)
-                {
-                    // No DLL found. Default to C# version (a bit slower, especially on higher levels).
-                    try
-                    {
-                        AddStatusLabel("Missing DLL. Defaulting to C# algorithm (may be slower)...", Color.Cyan);
-
-                        var timer = new System.Windows.Forms.Timer { Interval = 250 };
-                        timer.Tick += (s, args) =>
-                        {
-                            var elapsed = DateTime.Now - startTime;
-                            labelWaiting.Text = $"Calculating... [{elapsed.TotalSeconds:F1}s]";
-                        };
-                        timer.Start();
-
-                        // Couldn't find DLL. Run default version (C#)
-                        solverResult = await Task.Run(() => ShapeshifterKvho.Solver.Solve(dat), cancelSource.Token);
-                        timer.Stop();
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        AddStatusLabel("Operation cancelled.", Color.DarkOrange);
-                    }
-                    catch (Exception ex2)
-                    {
-                        if (!string.IsNullOrEmpty(dat) && initialBoardState != null)
-                        {
-                            AddStatusLabel($"Error: {ex2.Message}\n\nStackTrace:\n{ex.StackTrace}", Color.Red);
-                        }
-                    }
-                    finally
-                    {
-                        cancelSource?.Dispose();
-                        cancelSource = null;
-                        SetUIState(false);
-                    }
-                }
+                AddStatusLabel($"Error: {ex.Message}\n\nStackTrace:\n{ex.StackTrace}", Color.Red);
             }
             finally
             {
+                timer?.Stop();
+                timer?.Dispose();
+
                 cancelSource?.Dispose();
                 cancelSource = null;
                 SetUIState(false);
@@ -420,7 +440,6 @@ namespace Shapeshifter
             labelWaiting.Text = solving ? "Calculating..." : "";
             btnStartStop.Text = solving ? "Stop" : "Start";
             btnStartStop.Enabled = true;
-            textBoxInput.Enabled = !solving;
         }
 
         /// <summary>
@@ -746,6 +765,31 @@ namespace Shapeshifter
         private void tableSolution_Paint(object sender, PaintEventArgs e)
         {
             // Custom painting logic can be added here if needed
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void labelResult_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void labelResult_Click_1(object sender, EventArgs e)
+        {
+
+        }
+
+        private void roundedLabelVersion_Click(object sender, EventArgs e)
+        {
+
         }
     }
 

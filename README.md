@@ -45,7 +45,7 @@ You may need to temporarily disable Windows Defender, go to "Add or remove exclu
 If you're feeling skeptical, you can run the .EXE without the .DLL. Just be aware the solver may run slower if you do that.
 
 ## App Preview
-<img width="884" height="707" alt="image" src="https://github.com/user-attachments/assets/371d8f4f-1c1d-461b-a082-8f8b6c5fab4d" />
+https://github.com/user-attachments/assets/3ff799c7-6512-40ff-b6db-7e32f3ba4589
 
 ## Puzzle Data
 * **Grid Layout:** The main puzzle grid ($M \times N$ board).
